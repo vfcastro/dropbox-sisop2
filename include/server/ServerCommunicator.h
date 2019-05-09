@@ -1,14 +1,14 @@
 #include <pthread.h>
 
-class ServerCommunicator {
-private:
+struct ServerCommunicator {
   unsigned int port;
   unsigned int backlog;
   int sockfd;
-  std::thread th;
-
-public:
-  ServerCommunicator(unsigned int port, unsigned int backlog);
-  ~ServerCommunicator();
-  void start();
+  pthread_t listenThread;
+  
 };
+
+void ServerCommunicator_init(ServerCommunicator *sc, unsigned int port, unsigned int backlog);
+void ServerCommunicator_start(ServerCommunicator *sc);
+
+void* ServerCommunicator_accept(void* sc);
