@@ -1,0 +1,69 @@
+# Server
+
+@Mensagem
+
+@User
+ - id (string)
+ - sessions
+
+@ServerCommunicator
+ - Abre thread listen de conexão
+ - Abrir thread por accept de cliente
+     - Receber mensagens
+       - Deserializar
+     - Dispatch mensagens 
+     - Enviar mensagens
+       - Serializar
+
+@UserManager
+ - Carregar lista de usuarios
+ - Criacao de usuário
+ - Abertura sessão de usuário
+   - Abrir thread de envio de mensagens
+   - Abrir thread de recebimento de mensanges
+ - Fechamento de sessão de usuário 
+
+@FileManager
+ - Criar arquivo
+ - Apendar em arquivo
+ - Deletar arquivo
+ - Criar diretório
+ - Procurar arquivo/diretorio por nome
+ - Listar arquivos de diretorio
+
+@SyncManager
+ - Monitorar eventos de diretorio
+
+
+# CLIENT
+
+@Mensagem
+
+@Comunicacao
+ - Abrir thread de conexão com o server
+ - Solicitar abertura de sessão
+   - Abrir thread de envio de mensagens
+   - Abrir thread de recebimento de mensanges
+ - Receber mensagens
+   - Deserializar
+ - Processar mensagens 
+ - Enviar mensagens
+   - Serializar
+ 
+@Sincronizacao
+ - get_sync_dir
+ - Monitorar eventos do sync_dir
+
+@Arquivos
+ - Criar arquivo
+ - Apendar em arquivo
+ - Deletar arquivo
+ - Criar diretório
+ - Procurar arquivo/diretorio por nome
+ - Listar arquivos de diretorio
+ 
+@Interface
+ - Abrir thread de interface
+ - Comandos...
+
+ 
