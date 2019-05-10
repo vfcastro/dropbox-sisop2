@@ -54,15 +54,12 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
         std::cerr << "ClientCommunicator_init(): error connecting to send socket\n";
 		exit(-1);
 	}
-	std::cout << sendsockfd << "\n";
 
 	if (connect(recvsockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
         std::cerr << "ClientCommunicator_init(): error connecting to recv socket\n";
 		exit(-1);
 	}
  
- 	std::cout << recvsockfd << "\n";
-
 	std::cout << "ClientCommunicator_init(): END\n";
 }
 

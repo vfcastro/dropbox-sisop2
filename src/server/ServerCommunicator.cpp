@@ -40,29 +40,34 @@ void ServerCommunicator_init(ServerCommunicator *sc, unsigned int port, unsigned
 
 void ServerCommunicator_start(ServerCommunicator *sc) {
 	std::cout << "ServerCommunicator_start(): START\n";
-	pthread_create(&sc->listenThread,0,ServerCommunicator_accept,(void*)sc);
+	pthread_create(&sc->listenThread,0,ServerCommunicator_listen,(void*)sc);
 	std::cout << "ServerCommunicator_start(): listenThread created\n";
 	pthread_join(sc->listenThread,NULL);
 }
 
-void* ServerCommunicator_accept(void* sc) {
-	std::cout << "ServerCommunicator_accept(): START\n";
+void* ServerCommunicator_listen(void* sc) {
+	std::cout << "ServerCommunicator_listen(): START\n";
 	listen(((ServerCommunicator*)sc)->sockfd, ((ServerCommunicator*)sc)->backlog);
-	std::cout << "ServerCommunicator_accept(): WAITING for conections\n";
+	std::cout << "ServerCommunicator_listen(): WAITING for conections\n";
 	
+	socklen_t clilen = sizeof(struct sockaddr_in);
+	struct sockddr *connection = NULL;
+	int *newsockfd = NULL;
+
 	while(1) {
-		socklen_t clilen = sizeof(struct sockaddr_in);
-		struct sockaddr *connection = (struct sockaddr *)malloc(clilen);
-		int *newsockfd = (int*)malloc(sizeof(int));                        		
+		connection = (struct sockaddr *)malloc(clilen);
+		newsockfd = (int*)malloc(sizeof(int));                        		
+		pthread_t *acceptThread = (pthread_t *)malloc(sizeof(pthread_t));
 		
 		if ((*newsockfd = accept(((ServerCommunicator*)sc)->sockfd, connection, &clilen)) == -1) {
-			std::cout << "ServerCommunicator_accept(): ERROR on accept\n";
+			std::cout << "ServerCommunicator_listen(): ERROR on accept\n";
 			free(connection);
+			free(newsockfd);
+			free(acceptThread);
 		}
 		else {
-			std::cout << "accept\n";
-			//pthread_create(&thread, 0, process, (void *)newsockfd);
-			//pthread_detach(thread);
+			//pthread_create(acceptThread,0,ServerCommunicator_accept,(void*)sc);
+			std::cout << "ServerCommunicator_listen(): acceptThread created\n";
 		}
 	}
 }
