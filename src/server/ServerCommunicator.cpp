@@ -83,34 +83,45 @@ void* ServerCommunicator_listen(void* sc) {
 void* ServerCommunicator_accept(void* sc) {
 	// TODO: MUTEX no acesso ao Map!
 	usleep(100000);
-	std::cout << "ServerCommunicator_accept(): START\n";
+	std::cout << "ServerCommunicator_accept(): START thread " << pthread_self() << "\n";
 
 	ServerCommunicator *s = (ServerCommunicator*)sc;
 	int sockfd = s->acceptedThreads.find(pthread_self())->second;
 
 	Message *msg = (Message*) malloc(sizeof(Message));
-	void *buffer = (void *) malloc(sizeof(Message));
 
-	if(read(sockfd, buffer, sizeof(Message) == sizeof(Message))) {
-		Message_unmarshall(msg,buffer);
+	if(Message_recv(msg,sockfd) != -1) {
 		if(msg->type == OPEN_SEND_CONN) {
+			std::cout << "ServerCommunicator_accept(): read msg OPEN_SEND_CONN\n";		
 			msg->type = OK;
-			Message_marshall(msg,buffer);
-			//send
-			// do send
+			if(Message_send(msg,sockfd) != -1){
+				std::cout << "ServerCommunicator_accept(): sent reply OK\n";
+				// do send
+			}
+			else
+				std::cerr << "ServerCommunicator_accept(): ERROR sent reply OK\n";
 		}
-		else if (msg->type == OPEN_RECV_CONN) {
-			msg->type = OK;
-			Message_marshall(msg,buffer);
-			//send
-			// do receive
-		}
+		else 
+			if (msg->type == OPEN_RECV_CONN) {
+				std::cout << "ServerCommunicator_accept(): read msg OPEN_RECV_CONN\n";		
+				msg->type = OK;
+				if(Message_send(msg,sockfd) != -1) {
+					std::cout << "ServerCommunicator_accept(): sent reply OK\n";
+					// do revc
+				}
+				else
+					std::cerr << "ServerCommunicator_accept(): ERROR sent reply OK\n";
+			}
+			else 
+				std::cerr << "ServerCommunicator_accept(): ERROR recv msg type not OPEN_SEND_CONN nor OPEN_RECV_CONN\n";
 	}
+	else 
+		std::cerr << "ServerCommunicator_accept(): ERROR recv msg\n";
+	
 
-	free(msg);
-	free(buffer);
+	//free(msg);
 	close(sockfd);
 	s->acceptedThreads.erase(pthread_self());	
-	std::cout << "ServerCommunicator_accept(): END\n"; 
+	std::cout << "ServerCommunicator_accept(): ENDED thread " << pthread_self() << "\n"; 
 }
 

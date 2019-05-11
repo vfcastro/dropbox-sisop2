@@ -1,5 +1,6 @@
 #include <string>
 #include <pthread.h>
+#include "../../include/common/Message.h"
 
 struct ClientCommunicator {
   std::string username;
@@ -14,7 +15,5 @@ struct ClientCommunicator {
 };
 
 void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::string server, unsigned int port);
-//void ClientCommunicator_start(ClientCommunicator *cc);
-
-//void* ClientCommunicator_send(void* sc);
-//void* ClientCommunicator_recv(void* sc);
+void ClientCommunicator_start(ClientCommunicator *cc);
+void ClientCommunicator_waitRecv(ClientCommunicator *cc);

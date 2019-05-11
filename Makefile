@@ -8,13 +8,15 @@ BUILD_DIR=./build/
 all: common server client
 
 server:
-	g++ $(SERVER_SCR)*.cpp $(BUILD_DIR)Message.o -o $(BIN_DIR)server -lpthread
+	g++ -g $(SERVER_SCR)*.cpp $(BUILD_DIR)*.o -o $(BIN_DIR)server -lpthread
 
 client:
-	g++ $(CLIENT_SCR)*.cpp $(BUILD_DIR)Message.o -o $(BIN_DIR)client -lpthread
+	g++ -g $(CLIENT_SCR)*.cpp $(BUILD_DIR)*.o -o $(BIN_DIR)client -lpthread
 
 common:
-	g++ -c $(COMMON_SCR)Message.cpp -o $(BUILD_DIR)Message.o -lpthread
+	mkdir $(BUILD_DIR)
+	g++ -g -c $(COMMON_SCR)*.cpp -lpthread
+	mv *.o $(BUILD_DIR)
 
 clean:
-	rm -rf $(BIN_DIR)* $(BUILD_DIR)*
+	rm -rf $(BIN_DIR)* $(BUILD_DIR)
