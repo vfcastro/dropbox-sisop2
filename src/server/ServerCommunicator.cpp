@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include "../../include/server/ServerCommunicator.h"
+#include "../../include/common/Message.h"
 
 void ServerCommunicator_init(ServerCommunicator *sc, unsigned int port, unsigned int backlog) {
 	std::cout << "ServerCommunicator_init(): START\n";
@@ -47,11 +48,13 @@ void ServerCommunicator_start(ServerCommunicator *sc) {
 
 void* ServerCommunicator_listen(void* sc) {
 	std::cout << "ServerCommunicator_listen(): START\n";
-	listen(((ServerCommunicator*)sc)->sockfd, ((ServerCommunicator*)sc)->backlog);
+	ServerCommunicator *s = (ServerCommunicator*)sc;
+
+	listen(s->sockfd, s->backlog);
 	std::cout << "ServerCommunicator_listen(): WAITING for conections\n";
 	
 	socklen_t clilen = sizeof(struct sockaddr_in);
-	struct sockddr *connection = NULL;
+	struct sockaddr *connection = NULL;
 	int *newsockfd = NULL;
 
 	while(1) {
@@ -59,15 +62,55 @@ void* ServerCommunicator_listen(void* sc) {
 		newsockfd = (int*)malloc(sizeof(int));                        		
 		pthread_t *acceptThread = (pthread_t *)malloc(sizeof(pthread_t));
 		
-		if ((*newsockfd = accept(((ServerCommunicator*)sc)->sockfd, connection, &clilen)) == -1) {
+		if ((*newsockfd = accept(s->sockfd, connection, &clilen)) == -1) {
 			std::cout << "ServerCommunicator_listen(): ERROR on accept\n";
-			free(connection);
-			free(newsockfd);
-			free(acceptThread);
 		}
 		else {
-			//pthread_create(acceptThread,0,ServerCommunicator_accept,(void*)sc);
-			std::cout << "ServerCommunicator_listen(): acceptThread created\n";
+			pthread_create(acceptThread,0,ServerCommunicator_accept,(void*)sc);
+			s->acceptedThreads.insert(std::pair<pthread_t,int>(*acceptThread,*newsockfd));
+			std::cout << "ServerCommunicator_listen(): acceptThread " << *acceptThread << " fd " << *newsockfd << " created\n";
+
+			// TODO: MUTEX no acesso ao Map!
+			usleep(100000);
 		}
+	
+		free(connection);
+		free(newsockfd);
+		free(acceptThread);
 	}
 }
+
+void* ServerCommunicator_accept(void* sc) {
+	// TODO: MUTEX no acesso ao Map!
+	usleep(100000);
+	std::cout << "ServerCommunicator_accept(): START\n";
+
+	ServerCommunicator *s = (ServerCommunicator*)sc;
+	int sockfd = s->acceptedThreads.find(pthread_self())->second;
+
+	Message *msg = (Message*) malloc(sizeof(Message));
+	void *buffer = (void *) malloc(sizeof(Message));
+
+	if(read(sockfd, buffer, sizeof(Message) == sizeof(Message))) {
+		Message_unmarshall(msg,buffer);
+		if(msg->type == OPEN_SEND_CONN) {
+			msg->type = OK;
+			Message_marshall(msg,buffer);
+			//send
+			// do send
+		}
+		else if (msg->type == OPEN_RECV_CONN) {
+			msg->type = OK;
+			Message_marshall(msg,buffer);
+			//send
+			// do receive
+		}
+	}
+
+	free(msg);
+	free(buffer);
+	close(sockfd);
+	s->acceptedThreads.erase(pthread_self());	
+	std::cout << "ServerCommunicator_accept(): END\n"; 
+}
+

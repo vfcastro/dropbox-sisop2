@@ -1,21 +1,20 @@
 SERVER_SCR=./src/server/
-SERVER_INCLUDE=./include/server/
-
 CLIENT_SCR=./src/client/
-CLIENT_INCLUDE=./include/client/
-
-COMMOM_SCR=./src/common/
-COMMOM_INCLUDE=./include/common/
+COMMON_SCR=./src/common/
 
 BIN_DIR=./bin/
+BUILD_DIR=./build/
 
-all: server client
+all: common server client
 
- server:
-	g++ $(SERVER_SCR)*.cpp -o $(BIN_DIR)server -lpthread
+server:
+	g++ $(SERVER_SCR)*.cpp $(BUILD_DIR)Message.o -o $(BIN_DIR)server -lpthread
 
 client:
-	g++ $(CLIENT_SCR)*.cpp -o $(BIN_DIR)client -lpthread
+	g++ $(CLIENT_SCR)*.cpp $(BUILD_DIR)Message.o -o $(BIN_DIR)client -lpthread
+
+common:
+	g++ -c $(COMMON_SCR)Message.cpp -o $(BUILD_DIR)Message.o -lpthread
 
 clean:
-	rm -rf $(BIN_DIR)*
+	rm -rf $(BIN_DIR)* $(BUILD_DIR)*
