@@ -67,6 +67,7 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
 	cc->sendsockfd = sendsockfd;
 	cc->recvsockfd = recvsockfd;
 
+	// Solicita abertura de conexao de envio
 	Message *msg = Message_create(OPEN_SEND_CONN,0,std::string(cc->username).c_str(),std::string().c_str());
 	if(Message_send(msg,cc->sendsockfd) != -1) {
 		std::cout << "ClientCommunicator_init(): sent msg OPEN_SEND_CONN\n";
@@ -87,7 +88,8 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
 		std::cout << "ClientCommunicator_init(): ERROR sent msg OPEN_SEND_CONN\n";
 		exit(-1);
 	}
-	
+	//free(msg);
+
 	msg = Message_create(OPEN_RECV_CONN,0,std::string(cc->username).c_str(),std::string().c_str());
 	if(Message_send(msg,cc->recvsockfd) != -1) {
 		std::cout << "ClientCommunicator_init(): sent msg OPEN_RECV_CONN\n";

@@ -1,7 +1,9 @@
+#ifndef __SC_H__
+#define __SC_H__
+
 #include <pthread.h>
 #include <utility>	// std::pair
 #include <map>	// std::map
-#include "../../include/common/Message.h"
 
 struct ServerCommunicator {
   unsigned int port;
@@ -17,5 +19,5 @@ void ServerCommunicator_init(ServerCommunicator *sc, unsigned int port, unsigned
 void ServerCommunicator_start(ServerCommunicator *sc);
 void* ServerCommunicator_listen(void* sc);
 void* ServerCommunicator_accept(void* sc);
-//void ServerCommunicator_write(ServerCommunicator *sc, Message *msg);
-//void ServerCommunicator_read(ServerCommunicator *sc, int sockfd);
+void ServerCommunicator_receive(ServerCommunicator *sc, int sockfd);
+#endif

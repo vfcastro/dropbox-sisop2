@@ -4,8 +4,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include "../../include/server/ServerCommunicator.h"
 #include "../../include/common/Message.h"
+#include "../../include/server/ServerCommunicator.h"
+#include "../../include/server/ServerProcessor.h"
 
 void ServerCommunicator_init(ServerCommunicator *sc, unsigned int port, unsigned int backlog) {
 	std::cout << "ServerCommunicator_init(): START\n";
@@ -96,7 +97,7 @@ void* ServerCommunicator_accept(void* sc) {
 			msg->type = OK;
 			if(Message_send(msg,sockfd) != -1){
 				std::cout << "ServerCommunicator_accept(): sent reply OK\n";
-				// do send
+				ServerCommunicator_receive(s,sockfd);
 			}
 			else
 				std::cerr << "ServerCommunicator_accept(): ERROR sent reply OK\n";
@@ -107,7 +108,7 @@ void* ServerCommunicator_accept(void* sc) {
 				msg->type = OK;
 				if(Message_send(msg,sockfd) != -1) {
 					std::cout << "ServerCommunicator_accept(): sent reply OK\n";
-					// do revc
+					std::cout << "dispatch send\n";
 				}
 				else
 					std::cerr << "ServerCommunicator_accept(): ERROR sent reply OK\n";
@@ -125,3 +126,14 @@ void* ServerCommunicator_accept(void* sc) {
 	std::cout << "ServerCommunicator_accept(): ENDED thread " << pthread_self() << "\n"; 
 }
 
+void ServerCommunicator_receive(ServerCommunicator *sc, int sockfd) {
+	std::cout << "ServerCommunicator_receive(): WAITING for msg on fd " << sockfd << "\n"; 
+	
+	Message *msg = (Message*)malloc(sizeof(Message));
+	while(Message_recv(msg,sockfd) != -1) {
+		ServerProcessor_dispatch(sc,msg);
+	}
+
+	free(msg);
+	std::cout << "ServerCommunicator_receive(): END " << sockfd << "\n"; 
+}

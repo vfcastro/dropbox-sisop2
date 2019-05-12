@@ -1,4 +1,5 @@
 #include <iostream>
+#include <errno.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -77,7 +78,8 @@ int Message_recv(Message *msg, int sockfd) {
     int bytes_recv;
 
     if((bytes_recv = read(sockfd,(void*)buffer,sizeof(Message))) != sizeof(Message)) {
-        std::cerr << "Message_recv(): recv FAILED on fd "<< sockfd << "\n";
+		free(buffer);
+        std::cerr << "Message_recv(): recv FAILED on fd "<< sockfd << " bytes_recv: " << bytes_recv << "\n";
         return -1;
     }
     Message_unmarshall(msg,buffer);
