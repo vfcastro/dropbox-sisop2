@@ -11,8 +11,8 @@ Message* Message_create(unsigned int type, unsigned int seqn, const char *userna
 	Message *msg = (Message*) malloc(sizeof(Message));
 	msg->type = type;
 	msg->seqn = seqn;
-	msg->username = (char*)std::string(username).c_str();
-	msg->payload = (char*)std::string(payload).c_str();
+	memcpy((void*)msg->username,(void*)username,MAX_USERNAME_SIZE);
+	memcpy((void*)msg->payload,(void*)payload,MAX_PAYLOAD_SIZE);
 
 	std::cout << "Message_create(): type:" << msg->type << " seqn:" << msg->seqn << " username:" << msg->username << " payload:" << msg->payload << "\n";
 	return msg;
@@ -30,7 +30,7 @@ void Message_unmarshall(Message *msg, Message *buffer) {
     address += sizeof(msg->seqn);
 
     memcpy((char*) &(msg->username), address, MAX_USERNAME_SIZE);
-    address += sizeof(msg->username);
+    address += MAX_USERNAME_SIZE;
 
     memcpy((char*) &(msg->payload), address, MAX_PAYLOAD_SIZE);
 
@@ -49,7 +49,7 @@ void Message_marshall(Message *msg, Message *buffer) {
     address += sizeof(msg->seqn);
 
     memcpy((char*) address,(void*) &(msg->username), MAX_USERNAME_SIZE);
-    address += sizeof(msg->username);
+    address += MAX_USERNAME_SIZE;
 
     memcpy((char*) address,(void*) &(msg->payload), MAX_PAYLOAD_SIZE);
 

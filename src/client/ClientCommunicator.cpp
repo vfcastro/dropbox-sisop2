@@ -13,9 +13,10 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
 
 	if(username.size() > MAX_USERNAME_SIZE) {
 		std::cerr << "ClientCommunicator_init(): username too long. Max" << MAX_USERNAME_SIZE << "characters\n";
+		exit(-1);
 	}
 		
-	cc->username = std::string(username);
+	memcpy((void*)cc->username,(void*)std::string(username).c_str(),MAX_USERNAME_SIZE);
 	cc->server = std::string(server);
 	cc->port = port;
 	
@@ -143,7 +144,24 @@ void* ClientCommunicator_receive(void *cc) {
 	std::cout << "ClientCommunicator_receive(): END receive for msg on fd " << c->recvsockfd << "\n";
 }
 
+void ClientCommunicator_openSession(ClientCommunicator *cc) {
+	std::cout << "ClientCommunicator_openSession(): START\n";
 
+	Message *msg = Message_create(OPEN_SESSION,0,std::string(cc->username).c_str(),std::string().c_str());
+	if(Message_send(msg,cc->sendsockfd) == -1){
+		std::cerr << "ClientCommunicator_openSession(): ERROR sending OPEN_SESSION\n";
+		exit(-1);
+	}
+	std::cout << "ClientCommunicator_openSession(): sent msg OPEN_SESSION\n";
+
+	if(Message_recv(msg,cc->sendsockfd) == -1) {
+		std::cerr << "ClientCommunicator_openSession(): ERROR recv OK for OPEN_SESSION\n";
+		exit(-1);
+	}
+	std::cout << "ClientCommunicator_openSession(): recv OK for OPEN_SESSION\n";
+
+	std::cout << "ClientCommunicator_openSession(): END\n";
+}
 
 
 

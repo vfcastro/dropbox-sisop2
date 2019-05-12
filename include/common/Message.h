@@ -15,8 +15,8 @@
 struct Message {
 	unsigned int type;
 	unsigned int seqn; // 0 if the last, > 0 otherwise
-	char *username;
-	char *payload;
+	char username[MAX_USERNAME_SIZE];
+	char payload[MAX_PAYLOAD_SIZE];
 };
 
 Message* Message_create(unsigned int type, unsigned int seqn, const char *username, const char *payload);

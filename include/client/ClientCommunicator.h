@@ -6,7 +6,7 @@
 #include "../../include/common/Message.h"
 
 struct ClientCommunicator {
-  std::string username;
+  char username[MAX_USERNAME_SIZE];
   std::string server;
   unsigned int port;
 
@@ -19,5 +19,6 @@ struct ClientCommunicator {
 void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::string server, unsigned int port);
 void ClientCommunicator_start(ClientCommunicator *cc);
 void* ClientCommunicator_receive(void *cc);
+void ClientCommunicator_openSession(ClientCommunicator *cc);
 
 #endif
