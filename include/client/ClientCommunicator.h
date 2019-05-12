@@ -1,3 +1,6 @@
+#ifndef __CC_H__
+#define __CC_H__
+
 #include <string>
 #include <pthread.h>
 #include "../../include/common/Message.h"
@@ -9,11 +12,12 @@ struct ClientCommunicator {
 
   int sendsockfd;
   int recvsockfd;
-  pthread_t sendthread;
-  pthread_t recvthread;
+  pthread_t recvThread;
 
 };
 
 void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::string server, unsigned int port);
 void ClientCommunicator_start(ClientCommunicator *cc);
-void ClientCommunicator_waitRecv(ClientCommunicator *cc);
+void* ClientCommunicator_receive(void *cc);
+
+#endif

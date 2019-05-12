@@ -6,6 +6,7 @@
 #include <netdb.h>                      
 #include "../../include/common/Message.h"
 #include "../../include/client/ClientCommunicator.h"
+#include "../../include/client/ClientProcessor.h"
 
 void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::string server, unsigned int port) {
 	std::cout << "ClientCommunicator_init(): START\n";
@@ -39,12 +40,12 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
 
 	int enable = 1;
 	if (setsockopt(sendsockfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
-	    std::cout << "ServerCommunicator_init(): setsockopt(SO_REUSEADDR) failed\n";
+	    std::cout << "ClientCommunicator_init(): setsockopt(SO_REUSEADDR) failed\n";
 	    exit(-1);
 	}
  
  	if (setsockopt(recvsockfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
- 	    std::cout << "ServerCommunicator_init(): setsockopt(SO_REUSEADDR) failed\n";
+ 	    std::cout << "ClientCommunicator_init(): setsockopt(SO_REUSEADDR) failed\n";
  	    exit(-1);
  	}
 
@@ -90,6 +91,7 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
 	}
 	//free(msg);
 
+	// Solicita abertura de conexao de recebimento
 	msg = Message_create(OPEN_RECV_CONN,0,std::string(cc->username).c_str(),std::string().c_str());
 	if(Message_send(msg,cc->recvsockfd) != -1) {
 		std::cout << "ClientCommunicator_init(): sent msg OPEN_RECV_CONN\n";
@@ -120,8 +122,38 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
 void ClientCommunicator_start(ClientCommunicator *cc) {
 	std::cout << "ClientCommunicator_start(): START\n";
 
-	
+	// start receive thread
+	pthread_create(&(cc->recvThread),0,ClientCommunicator_receive,(void*)cc);
 
 
 	std::cout << "ClientCommunicator_start(): END\n";
 }
+
+void* ClientCommunicator_receive(void *cc) {
+	ClientCommunicator *c = (ClientCommunicator*)cc; 
+	std::cout << "ClientCommunicator_receive(): STARTED thread " << pthread_self() << "\n";
+	std::cout << "ClientCommunicator_receive(): WAITING for msg on fd " << c->recvsockfd << "\n";
+
+    Message *msg = (Message*)malloc(sizeof(Message));
+    while(Message_recv(msg,c->recvsockfd) != -1) {
+        ClientProcessor_dispatch(c,msg);
+    }
+
+    free(msg);
+	std::cout << "ClientCommunicator_receive(): END receive for msg on fd " << c->recvsockfd << "\n";
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

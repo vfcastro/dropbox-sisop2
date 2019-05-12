@@ -108,7 +108,8 @@ void* ServerCommunicator_accept(void* sc) {
 				msg->type = OK;
 				if(Message_send(msg,sockfd) != -1) {
 					std::cout << "ServerCommunicator_accept(): sent reply OK\n";
-					std::cout << "dispatch send\n";
+					// TODO: thread deve aguardar evento de envio
+					while(true){}
 				}
 				else
 					std::cerr << "ServerCommunicator_accept(): ERROR sent reply OK\n";

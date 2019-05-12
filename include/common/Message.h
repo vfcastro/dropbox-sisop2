@@ -10,6 +10,7 @@
 #define OPEN_SEND_CONN 2
 #define OPEN_RECV_CONN 3
 #define OPEN_SESSION 4
+#define CREATE_FILE 5
 
 struct Message {
 	unsigned int type;

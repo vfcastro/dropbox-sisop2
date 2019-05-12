@@ -1,6 +1,12 @@
-# Server
+# Common
 
-@Mensagem
+@Message
+ - Criar msg
+ - Enviar msg em socket
+ - Receber msg em socket
+ - Marshall/Unmarshall
+
+# Server
 
 @User
  - id (string)
@@ -9,11 +15,16 @@
 @ServerCommunicator
  - Abre thread listen de conexão
  - Abrir thread por accept de cliente
-     - Receber mensagens
-       - Deserializar
-     - Dispatch mensagens 
-     - Enviar mensagens
-       - Serializar
+ 	- Qualquer accept sempre espera msgs de OPEN_SEND_CONN ou OPEN_RECV_CONN
+ 	- Se recebeu OPEN_SEND_CONN:
+		- Thread fica aguardando receber mensagens no socket de envio do cliente
+    	- Dispatch mensagens 
+    - Se recebeu OPEN_RECV_CONN
+    	- Thread fica aguardando receber mensagens internas para envio no socket de recebimento do cliente
+
+@ServerProcessor (dispatch)
+  - Invocado quando recebe mensagem no socket
+  - Identifica o tipo de mensagem e invoca a respectiva ação (abrir sessão, criar arquivo, etc..)
 
 @UserManager
  - Carregar lista de usuarios
@@ -37,19 +48,17 @@
 
 # CLIENT
 
-@Mensagem
-
-@Comunicacao
- - Abrir thread de conexão com o server
+@ClientCommunicator
+ - Abrir conexão de de envio e recebimento com o server
+ - Cria thread que fica aguardando receber msgs no socket de recebimento
+ 	- Recebe msg
+ 	- Chama o ClientProcessor para tratar msg
  - Solicitar abertura de sessão
-   - Abrir thread de envio de mensagens
-   - Abrir thread de recebimento de mensanges
- - Receber mensagens
-   - Deserializar
- - Processar mensagens 
- - Enviar mensagens
-   - Serializar
- 
+
+@ClientProcessor (dispatch)
+ - Recebe mensagens
+ - Identifica o tipo de mensagem e invoca a respectiva ação (abrir sessão, criar arquivo, etc..)
+   
 @Sincronizacao
  - get_sync_dir
  - Monitorar eventos do sync_dir
