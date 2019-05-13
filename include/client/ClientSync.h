@@ -5,7 +5,7 @@
 struct ClientSync {
 	// thread disparada para sync
 	pthread_t syncThread;
-
+	std::string sync_dir;
 	// talvez guardar aqui o caminho do sync_dir
 	// ou usar sempre o caminho relativo ./ no inotify
 	
