@@ -17,22 +17,16 @@
  - Abrir thread por accept de cliente
  	- Qualquer accept sempre espera msgs de OPEN_SEND_CONN ou OPEN_RECV_CONN
  	- Se recebeu OPEN_SEND_CONN:
-		- Thread fica aguardando receber mensagens no socket de envio do cliente
-    	- Dispatch mensagens 
+ 	    - Gera connectioId e devolve para  o cliente na msg de OK
+		- Thread fica aguardando receber mensagens do cliente no socket
+    	- Faz o Dispatch das mensagens 
     - Se recebeu OPEN_RECV_CONN
-    	- Thread fica aguardando receber mensagens internas para envio no socket de recebimento do cliente
+        - Cria fila de msgs para  envio com base no connectionId
+    	- Thread fica aguardando receber mensagens na fila para enviar ao cliente no socket
 
 @ServerProcessor (dispatch)
   - Invocado quando recebe mensagem no socket
   - Identifica o tipo de mensagem e invoca a respectiva ação (abrir sessão, criar arquivo, etc..)
-
-@UserManager
- - Carregar lista de usuarios
- - Criacao de usuário
- - Abertura sessão de usuário
-   - Abrir thread de envio de mensagens
-   - Abrir thread de recebimento de mensanges
- - Fechamento de sessão de usuário 
 
 @FileManager
  - Criar arquivo
@@ -42,8 +36,9 @@
  - Procurar arquivo/diretorio por nome
  - Listar arquivos de diretorio
 
-@SyncManager
- - Monitorar eventos de diretorio
+@ServerSync
+ - Recebe chamadas do ServerProcessor
+ - Posta msgs correspondentes na fila de msgs conforme connectionId
 
 
 # CLIENT
@@ -59,7 +54,7 @@
  - Recebe mensagens
  - Identifica o tipo de mensagem e invoca a respectiva ação (abrir sessão, criar arquivo, etc..)
    
-@Sincronizacao
+@ClientSync
  - get_sync_dir
  - Monitorar eventos do sync_dir
 

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
+#include <cstring>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/inotify.h>
@@ -41,70 +42,82 @@ void* ClientSync_sync(void *cs) {
 	// Sera monitorado o diretorio sync_dir da struct ClientSync
 	// quando o inotify identificar algum evento, é chamada a respectiva funcao
 	int length, i = 0, wd;
-	  int fd;
-	  char buffer[BUF_LEN];
-	 
-	  /* Initialize Inotify*/
-	  fd = inotify_init();
-	  if ( fd < 0 ) {
-	    perror( "Couldn't initialize inotify");
+	int fd;
+	char buffer[BUF_LEN];
+	
+	/* Initialize Inotify*/
+	fd = inotify_init();
+	if ( fd < 0 ) {
+	  perror( "Couldn't initialize inotify");
+	}
+	
+	/* add watch to starting directory */
+	wd = inotify_add_watch(fd, sync_dir, IN_CREATE | IN_CLOSE_WRITE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO); 
+	
+	if (wd == -1)
+	  {
+	    printf("Couldn't add watch to %s\n",sync_dir);
 	  }
-	 
-	  /* add watch to starting directory */
-	  wd = inotify_add_watch(fd, sync_dir, IN_CREATE | IN_MODIFY | IN_DELETE); 
-	 
-	  if (wd == -1)
-	    {
-	      printf("Couldn't add watch to %s\n",sync_dir);
-	    }
-	  else
-	    {
-	      printf("Watching:: %s\n",sync_dir);
-	    }
-	 
-	  /* do it forever*/
-	  while(1)
-	    {
-	      i = 0;
-	      length = read( fd, buffer, BUF_LEN );  
-	 
-	      if ( length < 0 ) {
-	        perror( "read" );
-	      }  
-	 
-	      while ( i < length ) {
-	        struct inotify_event *event = ( struct inotify_event * ) &buffer[ i ];
-	        if ( event->len ) {
-	          if ( event->mask & IN_CREATE) {
-	            if (event->mask & IN_ISDIR)
-	              printf( "The directory %s was Created.\n", event->name );       
-	            else
-	              printf( "The file %s was Created with WD %d\n", event->name, event->wd );       
-	          }
-	           
-	          if ( event->mask & IN_MODIFY) {
-	            if (event->mask & IN_ISDIR)
-	              printf( "The directory %s was modified.\n", event->name );       
-	            else
-	              printf( "The file %s was modified with WD %d\n", event->name, event->wd );       
-	          }
-	           
-	          if ( event->mask & IN_DELETE) {
-	            if (event->mask & IN_ISDIR)
-	              printf( "The directory %s was deleted.\n", event->name );       
-	            else
-	              printf( "The file %s was deleted with WD %d\n", event->name, event->wd );       
-	          }  
-	 
-	 
-	          i += EVENT_SIZE + event->len;
+	else
+	  {
+	    printf("Watching:: %s\n",sync_dir);
+	  }
+	
+	/* do it forever*/
+	while(1)
+	  {
+	    i = 0;
+	    length = read( fd, buffer, BUF_LEN );  
+	
+	    if ( length < 0 ) {
+	      perror( "read" );
+	    }  
+	
+	    while ( i < length ) {
+	      struct inotify_event *event = ( struct inotify_event * ) &buffer[ i ];
+	      char* oldname;
+	      if ( event->len ) {
+	        if ( event->mask & IN_CLOSE_WRITE) {
+	          if (event->mask & IN_ISDIR)
+	            printf( "The directory %s was modified.\n", event->name );       
+	          else
+	            printf( "The file %s was IN_CLOSE_WRITE with WD %d\n", event->name, event->wd );       
 	        }
+	         
+	        if ( event->mask & IN_MOVED_FROM) {
+	          if (event->mask & IN_ISDIR)
+	            printf( "The directory %s was IN_MOVED_FROM.\n", event->name );       
+	          else {
+	            printf( "The file %s was IN_MOVED_FROM with WD %d\n", event->name, event->wd );
+ 				oldname = (char*)malloc(event->len);
+ 				strcpy(oldname,(const char*)event->name);
+			  }
+	        }
+
+	  	  if ( event->mask & IN_MOVED_TO) {
+              if (event->mask & IN_ISDIR)
+                printf( "The directory %s was IN_MOVED_TO.\n", event->name );       
+              else {
+                printf( "The file %s was IN_MOVED_TO to %s\n", oldname, event->name );       
+				free(oldname);
+			  }
+            } 
+
+	        if ( event->mask & IN_DELETE) {
+	          if (event->mask & IN_ISDIR)
+	            printf( "The directory %s was IN_DELETE.\n", event->name );       
+	          else
+	            printf( "The file %s was IN_DELETE with WD %d\n", event->name, event->wd );       
+	        }  
+ 
+	        i += EVENT_SIZE + event->len;
 	      }
 	    }
-	 
-	  /* Clean up*/
-	  inotify_rm_watch( fd, wd );
-	  close( fd );
+	  }
+	
+	/* Clean up*/
+	inotify_rm_watch( fd, wd );
+	close( fd );
 
 
 	std::cout << "ClientSync_sync() thread END\n";

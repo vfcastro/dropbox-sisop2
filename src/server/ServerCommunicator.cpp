@@ -12,6 +12,7 @@ void ServerCommunicator_init(ServerCommunicator *sc, unsigned int port, unsigned
 	std::cout << "ServerCommunicator_init(): START\n";
 	sc->port = port;
 	sc->backlog = backlog;
+	sc->connectionId = 0;
 
 	int sockfd;
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -86,15 +87,24 @@ void* ServerCommunicator_accept(void* sc) {
 	usleep(100000);
 	std::cout << "ServerCommunicator_accept(): START thread " << pthread_self() << "\n";
 
+	// adiciona mapeamento thread,sockfd
 	ServerCommunicator *s = (ServerCommunicator*)sc;
 	int sockfd = s->acceptedThreads.find(pthread_self())->second;
 
 	Message *msg = (Message*) malloc(sizeof(Message));
 
+	// protocolo de abertura de conexao
 	if(Message_recv(msg,sockfd) != -1) {
 		if(msg->type == OPEN_SEND_CONN) {
 			std::cout << "ServerCommunicator_accept(): read msg OPEN_SEND_CONN\n";		
+
+			//add map thread -> connectionId
+			s->connectionId = s->connectionId+1;
+			s->threadConnId.insert(std::pair<pthread_t,int>(pthread_self(),s->connectionId));
+
+			// passa-se ao cliente o connId pelo campo seqn
 			msg->type = OK;
+			msg->seqn = s->connectionId;
 			if(Message_send(msg,sockfd) != -1){
 				std::cout << "ServerCommunicator_accept(): sent reply OK\n";
 				ServerCommunicator_receive(s,sockfd);
@@ -108,8 +118,11 @@ void* ServerCommunicator_accept(void* sc) {
 				msg->type = OK;
 				if(Message_send(msg,sockfd) != -1) {
 					std::cout << "ServerCommunicator_accept(): sent reply OK\n";
-					// TODO: thread deve aguardar evento de envio
-					while(true){}
+					// thread deve aguardar por msgs na fila identificada pelo connectionId
+					// que vem do campo seqn da msg
+					std::queue<Message> queue;
+					s->sendQueue.insert(std::pair<int,std::queue<Message>>(msg->seqn,queue));
+					ServerCommunicator_send(s,sockfd,msg->seqn);
 				}
 				else
 					std::cerr << "ServerCommunicator_accept(): ERROR sent reply OK\n";
@@ -137,4 +150,20 @@ void ServerCommunicator_receive(ServerCommunicator *sc, int sockfd) {
 
 	free(msg);
 	std::cout << "ServerCommunicator_receive(): END " << sockfd << "\n"; 
+}
+
+void ServerCommunicator_send(ServerCommunicator *sc, int sockfd, int connectionId) {
+	std::cout << "ServerCommunicator_send(): START on connId "<< connectionId <<"\n";
+	// Enquanto socket esta aberto, tenta ler evento para enviar ao client
+	void *buffer = (void*)malloc(1);
+	while(read(sockfd,buffer,1) != -1) {
+		// TODO: mutex para acesso a fila!
+		// checa se ha msgs na fila identificada por connectionId
+		if(sc->sendQueue.find(connectionId)->second.size() > 0) {
+			std::cout << "ServerCommunicator_send() SEND!\n";
+		}
+			
+	}
+
+	free(buffer);
 }

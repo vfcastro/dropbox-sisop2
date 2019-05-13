@@ -74,8 +74,9 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
 	if(Message_send(msg,cc->sendsockfd) != -1) {
 		std::cout << "ClientCommunicator_init(): sent msg OPEN_SEND_CONN\n";
 	    if(Message_recv(msg,cc->sendsockfd) != -1) { 
-	    	if(msg->type == OK)
+	    	if(msg->type == OK) {
 				std::cout << "ClientCommunicator_init(): recv OK for OPEN_SEND_CONN\n";
+			}
 			else {
 				std::cerr << "ClientCommunicator_init(): ERROR recv OK for OPEN_SEND_CONN\n";
 				exit(-1);
@@ -92,8 +93,9 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
 	}
 	//free(msg);
 
-	// Solicita abertura de conexao de recebimento
-	msg = Message_create(OPEN_RECV_CONN,0,std::string(cc->username).c_str(),std::string().c_str());
+	// Solicita abertura de conexao de recebimento passando conectionId recebido da OPEN_SEND_CONN no campo seqn
+	int connectionId = msg->seqn;
+	msg = Message_create(OPEN_RECV_CONN,connectionId,std::string(cc->username).c_str(),std::string().c_str());
 	if(Message_send(msg,cc->recvsockfd) != -1) {
 		std::cout << "ClientCommunicator_init(): sent msg OPEN_RECV_CONN\n";
 	    if(Message_recv(msg,cc->recvsockfd) != -1) { 
