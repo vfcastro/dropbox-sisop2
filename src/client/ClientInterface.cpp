@@ -7,7 +7,7 @@ void ClientInterface_start(ClientCommunicator *cc) {
 	std::string command;
 
 	while(!exit){
-		std::cout << "$";
+		std::cout << "$ ";
 		std::cin >> command;
 	}
 

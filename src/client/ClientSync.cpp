@@ -25,5 +25,7 @@ void* ClientSync_sync(void *cs) {
 	// mensagens para o server via sockets do ClientCommunicator
 	while(true){}
 
+
+
 	std::cout << "ClientSync_sync() thread END\n";
 }
