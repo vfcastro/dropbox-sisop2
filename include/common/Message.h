@@ -12,6 +12,7 @@
 #define OPEN_SESSION 4
 #define CREATE_FILE 5
 #define FILE_CLOSE_WRITE 6
+#define END 7
 
 struct Message {
 	unsigned int type;

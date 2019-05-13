@@ -1,6 +1,8 @@
 #include <unistd.h>
 #include <iostream>
 #include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <cstring>
 #include <errno.h>
@@ -25,7 +27,7 @@ void ClientSync_init(ClientSync *cs, ClientCommunicator *cc) {
 }
 
 void ClientSync_get_sync_dir(ClientSync *cs) {
-	// checa se sync_dir_usename existe no current work dir
+	// checa se sync_dir_username existe no current work dir
 	// se nao houver, cria e solicita sync_dir ao server
 	if(FileManager_openDir((char*)cs->sync_dir.c_str()) == -1) {
 		if(FileManager_createDir((char*)cs->sync_dir.c_str()) == -1) {
@@ -156,25 +158,27 @@ void ClientSync_onCloseWrite(ClientSync *cs, char *name) {
 	Message_send(msg,cs->cc->sendsockfd);
 	Message_recv(msg,cs->cc->sendsockfd);
 
-	int f = open((char*)path.c_str(),O_RDONLY);
-	if(f == -1) {
+	int f;
+
+	if((f = open(path.c_str(), O_RDONLY)) == -1){
 		std::cerr << "ClientSync_onCloseWrite(): ERROR opening file " << path << "\n";
 		return;
 	}
-	int bytes_recv;
-	while(num_of_messages > 0) {
-		bytes_recv = read(f,(void*)msg->payload,MAX_PAYLOAD_SIZE);
-		std::cout << "ClientSync_onCloseWrite(): read " << bytes_recv << " bytes from file " << path << " payload: " << msg->payload << "\n";
+
+	int bytes_recv = read(f, msg->payload, MAX_PAYLOAD_SIZE);
+	
+	while(bytes_recv){
+		std::cout << "ClientSync_onCloseWrite(): read " << bytes_recv << " bytes from file " << path << "\n";
 		if(bytes_recv < MAX_PAYLOAD_SIZE)
 			msg->payload[bytes_recv] = '\0';
 		num_of_messages = num_of_messages - 1;
 		msg->seqn = num_of_messages;
 		Message_send(msg,cs->cc->sendsockfd);
-		Message_recv(msg,cs->cc->sendsockfd);
+		bytes_recv = read(f, msg->payload, MAX_PAYLOAD_SIZE);
 	}
-	std::cout << "ClientSync_onCloseWrite(): read " << bytes_recv << " bytes from file " << path << "\n";	
 
-
+	msg->type = END;
+	Message_send(msg,cs->cc->sendsockfd);
 }
 
 void ClientSync_onDelete(ClientSync *cs, char *name) {}

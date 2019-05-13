@@ -19,8 +19,6 @@ void ServerProcessor_dispatch(ServerCommunicator *sc, Message *msg) {
 
 	}
 
-
-
 	
 	std::cout << "ServerProcessor_dispatch(): END\n";
 }
@@ -59,10 +57,24 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
 	
 	//primeira msg contem o nome do arquivo, cria caso necessario
-	std::string path("./sync_dir_");
-	path.append(msg->username).append("/").append(msg->payload);
+
+	std::string path("./sync_dir_server/");
+	path.append(msg->username).append("/");
+
+	// Verifica se pasta do usuário existe, se não existe, cria
+	if(FileManager_openDir((char*)path.c_str()) == -1) {
+		if(FileManager_createDir((char*)path.c_str()) == -1) {
+				std::cerr << "Server(): ERROR creating " << path << "\n";
+				exit(-1);
+		}
+	}
+
+	path.append(msg->payload);
+
 	std::cout << "ServerProcessor_onCloseWrite(): creating file " << path << "\n";
-	int f = open((char*)path.c_str(),O_CREAT,S_IRWXU);
+
+	int f = open((char*)path.c_str(),O_CREAT|O_WRONLY,0600);
+	
 	if(f == -1){
 		std::cerr << "ServerProcessor_onCloseWrite(): ERROR creating file " << path << "\n";
 		return;
@@ -72,20 +84,21 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	Message_send(msg,sockfd);
 
 	//Preenche o arquivo conforme recebimento das mensagens
-	while(Message_recv(msg,sc->sockfd) != -1) {
+	while(Message_recv(msg,sockfd) != -1) {
+		// Verifica se tipo = OK, se sim, para de escrever
+		if(msg->type == END){
+			break;
+		}
+
 		std::string payload(msg->payload);
 		std::cout << "ServerProcessor_onCloseWrite(): recv payload " << payload << "\n";
-		write(f,(const void *)payload.c_str(),payload.size());
+		if(write(f,(const void *)payload.c_str(),payload.size()) == -1){
+			exit(6);
+		}
 		msg->type = OK;
-		Message_send(msg,sockfd);
 	}
+
 	close(f);
-	
-	
-
-
-
-
 
 	std::cout << "ServerProcessor_onCloseWrite(): END recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
 }
