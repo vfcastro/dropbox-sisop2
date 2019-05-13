@@ -1,8 +1,8 @@
 #ifndef __MESSAGE_H__
 #define __MESSAGE_H__
 
-#define MAX_PAYLOAD_SIZE 100
-#define MAX_USERNAME_SIZE 10
+#define MAX_PAYLOAD_SIZE 500
+#define MAX_USERNAME_SIZE 100
 
 // Message types:
 #define OK 0

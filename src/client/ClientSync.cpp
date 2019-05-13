@@ -23,7 +23,8 @@ void ClientSync_init(ClientSync *cs, ClientCommunicator *cc) {
 
 void ClientSync_get_sync_dir(ClientSync *cs) {
 	// checa se sync_dir_usename existe no current work dir
-	// e cria se não houver
+	// se nao houver, cria e solicita sync_dir ao server
+	// TODO: checar se existe antes de criar e solicitar ao server
 	if(FileManager_createDir((char*)cs->sync_dir.c_str()) == -1) {
 		std::cerr << "ClientSync_get_sync_dir(): ERROR creating dir " << cs->sync_dir << "\n";
 		exit(-1);
@@ -52,7 +53,7 @@ void* ClientSync_sync(void *cs) {
 	}
 	
 	/* add watch to starting directory */
-	wd = inotify_add_watch(fd, sync_dir, IN_CREATE | IN_CLOSE_WRITE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO); 
+	wd = inotify_add_watch(fd, sync_dir, IN_CLOSE_WRITE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO); 
 	
 	if (wd == -1)
 	  {
@@ -81,7 +82,8 @@ void* ClientSync_sync(void *cs) {
 	          if (event->mask & IN_ISDIR)
 	            printf( "The directory %s was modified.\n", event->name );       
 	          else
-	            printf( "The file %s was IN_CLOSE_WRITE with WD %d\n", event->name, event->wd );       
+	            printf( "The file %s was IN_CLOSE_WRITE with WD %d\n", event->name, event->wd );
+	          	ClientSync_onCloseWrite(c,event->name);
 	        }
 	         
 	        if ( event->mask & IN_MOVED_FROM) {
@@ -99,6 +101,7 @@ void* ClientSync_sync(void *cs) {
                 printf( "The directory %s was IN_MOVED_TO.\n", event->name );       
               else {
                 printf( "The file %s was IN_MOVED_TO to %s\n", oldname, event->name );       
+	          	ClientSync_onRename(c,oldname,event->name);
 				free(oldname);
 			  }
             } 
@@ -108,6 +111,7 @@ void* ClientSync_sync(void *cs) {
 	            printf( "The directory %s was IN_DELETE.\n", event->name );       
 	          else
 	            printf( "The file %s was IN_DELETE with WD %d\n", event->name, event->wd );       
+	          	ClientSync_onDelete(c,event->name);
 	        }  
  
 	        i += EVENT_SIZE + event->len;
@@ -122,3 +126,7 @@ void* ClientSync_sync(void *cs) {
 
 	std::cout << "ClientSync_sync() thread END\n";
 }
+
+void ClientSync_onCloseWrite(ClientSync *cs, char *name) {}
+void ClientSync_onDelete(ClientSync *cs, char *name) {}
+void ClientSync_onRename(ClientSync *cs, char *oldname, char* newname) {}

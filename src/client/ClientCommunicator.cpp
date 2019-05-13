@@ -162,7 +162,7 @@ void ClientCommunicator_openSession(ClientCommunicator *cc) {
 	}
 
 	if(msg->type == NOK) {
-		std::cerr << "ClientCommunicator_openSession(): ERROR recv OK for OPEN_SESSION\n";	
+		std::cerr << "ClientCommunicator_openSession(): ERROR recv NOK for OPEN_SESSION\n";	
     	exit(-1);
     }
 

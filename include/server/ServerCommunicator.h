@@ -1,11 +1,13 @@
 #ifndef __SC_H__
 #define __SC_H__
 
+#define MAX_OPEN_SESSIONS 2
+
 #include <pthread.h>
 #include <utility>	// std::pair
 #include <map>		// std::map
 #include <queue>	// std::queue
-#include <tuple>	// std::tuple
+#include <list>		// std::tuple
 #include "../../include/common/Message.h"
 using namespace std;
 
@@ -16,13 +18,14 @@ struct ServerCommunicator {
   pthread_t listenThread;
   
   //acceptedThreads é um mapeamento thread_t -> socketfd
-  //é usado pelas threads de conexao para envio/recebimento de msgs
+  //é usado pelas threads de conexao para envio/recebimento de msgs nos sockets
   std::map<pthread_t,int> acceptedThreads;
 
   //a cada conexao do cliente retorna-se  um id;
   int connectionId;
 
-  //mapeamento thread -> connectionId
+  //mapeamento thread_t -> connectionId
+  //é usado pelas threads para identificar qual a connectionId em questao
   std::map<pthread_t,int> threadConnId; 
 
   //mapeamento connectionId -> fila de msgs para envio ao cliente

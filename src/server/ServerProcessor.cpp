@@ -21,8 +21,11 @@ void ServerProcessor_dispatch(ServerCommunicator *sc, Message *msg) {
 void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
 	std::cout << "ServerProcessor_openSession(): recv OPEN_SESSION from client " << msg->username << "\n";
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
-	
-	//TODO
+
+	//TODO: checar numero de sessoes!
+
+
+
 	//Checar se existe sync_dir_<username>
 	//Se não houve, criar
 	std::string sync_dir("./sync_dir_");
@@ -39,6 +42,7 @@ void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
 		std::cerr << "ServerProcessor_openSession(): ERROR sending OK for OPEN_SESSION to client " << msg->username << "\n";
 		return;
 	}
+
 
 	std::cout << "ServerProcessor_openSession(): sent OK for OPEN_SESSION to client " << msg->username << "\n";
 }
