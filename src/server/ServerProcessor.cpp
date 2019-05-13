@@ -1,5 +1,8 @@
 #include <iostream>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "../../include/server/ServerProcessor.h"
 #include "../../include/common/FileManager.h"
 
@@ -9,9 +12,13 @@ void ServerProcessor_dispatch(ServerCommunicator *sc, Message *msg) {
 		case OPEN_SESSION:
 			ServerProcessor_openSession(sc,msg);
 		break;
-
+	
+		case FILE_CLOSE_WRITE:
+			ServerProcessor_onCloseWrite(sc,msg);
+		break;
 
 	}
+
 
 
 	
@@ -46,3 +53,45 @@ void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
 
 	std::cout << "ServerProcessor_openSession(): sent OK for OPEN_SESSION to client " << msg->username << "\n";
 }
+
+void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
+	std::cout << "ServerProcessor_onCloseWrite(): recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
+	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
+	
+	//primeira msg contem o nome do arquivo, cria caso necessario
+	std::string path("./sync_dir_");
+	path.append(msg->username).append("/").append(msg->payload);
+	std::cout << "ServerProcessor_onCloseWrite(): creating file " << path << "\n";
+	int f = open((char*)path.c_str(),O_CREAT,S_IRWXU);
+	if(f == -1){
+		std::cerr << "ServerProcessor_onCloseWrite(): ERROR creating file " << path << "\n";
+		return;
+	}
+
+	msg->type = OK;
+	Message_send(msg,sockfd);
+
+	//Preenche o arquivo conforme recebimento das mensagens
+	while(Message_recv(msg,sc->sockfd) != -1) {
+		std::string payload(msg->payload);
+		std::cout << "ServerProcessor_onCloseWrite(): recv payload " << payload << "\n";
+		write(f,(const void *)payload.c_str(),payload.size());
+		msg->type = OK;
+		Message_send(msg,sockfd);
+	}
+	close(f);
+	
+	
+
+
+
+
+
+	std::cout << "ServerProcessor_onCloseWrite(): END recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
+}
+
+
+
+
+
+

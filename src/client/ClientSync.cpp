@@ -5,8 +5,10 @@
 #include <cstring>
 #include <errno.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/inotify.h>
 #include <limits.h>
+#include <fcntl.h>
 #include "../../include/client/ClientSync.h"
 #include "../../include/common/FileManager.h"
 #include "../../include/common/Message.h"
@@ -152,20 +154,23 @@ void ClientSync_onCloseWrite(ClientSync *cs, char *name) {
 
 	Message *msg = Message_create(FILE_CLOSE_WRITE,num_of_messages,cs->cc->username,(const char *)name);
 	Message_send(msg,cs->cc->sendsockfd);
+	Message_recv(msg,cs->cc->sendsockfd);
 
-	FILE* f = fopen((char*)path.c_str(),"r");
-	if(f == NULL) {
+	int f = open((char*)path.c_str(),O_RDONLY);
+	if(f == -1) {
 		std::cerr << "ClientSync_onCloseWrite(): ERROR opening file " << path << "\n";
 		return;
 	}
 	int bytes_recv;
-	while((bytes_recv = fread((void*)msg->payload,MAX_PAYLOAD_SIZE,1,f)) > 0) {
-		std::cout << "ClientSync_onCloseWrite(): read " << bytes_recv << " bytes from file " << path << "\n";
+	while(num_of_messages > 0) {
+		bytes_recv = read(f,(void*)msg->payload,MAX_PAYLOAD_SIZE);
+		std::cout << "ClientSync_onCloseWrite(): read " << bytes_recv << " bytes from file " << path << " payload: " << msg->payload << "\n";
 		if(bytes_recv < MAX_PAYLOAD_SIZE)
 			msg->payload[bytes_recv] = '\0';
 		num_of_messages = num_of_messages - 1;
 		msg->seqn = num_of_messages;
 		Message_send(msg,cs->cc->sendsockfd);
+		Message_recv(msg,cs->cc->sendsockfd);
 	}
 	std::cout << "ClientSync_onCloseWrite(): read " << bytes_recv << " bytes from file " << path << "\n";	
 

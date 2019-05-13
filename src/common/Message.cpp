@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+
 #include "../../include/common/Message.h"
 
 Message* Message_create(unsigned int type, unsigned int seqn, const char *username, const char *payload) {
