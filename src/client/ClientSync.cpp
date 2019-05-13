@@ -9,6 +9,7 @@
 #include <limits.h>
 #include "../../include/client/ClientSync.h"
 #include "../../include/common/FileManager.h"
+#include "../../include/common/Message.h"
 
 /* Para o INOTIFY */
 #define MAX_EVENTS 1024 /*Max. number of events to process at one go*/
@@ -24,18 +25,21 @@ void ClientSync_init(ClientSync *cs, ClientCommunicator *cc) {
 void ClientSync_get_sync_dir(ClientSync *cs) {
 	// checa se sync_dir_usename existe no current work dir
 	// se nao houver, cria e solicita sync_dir ao server
-	// TODO: checar se existe antes de criar e solicitar ao server
-	if(FileManager_createDir((char*)cs->sync_dir.c_str()) == -1) {
-		std::cerr << "ClientSync_get_sync_dir(): ERROR creating dir " << cs->sync_dir << "\n";
-		exit(-1);
+	if(FileManager_openDir((char*)cs->sync_dir.c_str()) == -1) {
+		if(FileManager_createDir((char*)cs->sync_dir.c_str()) == -1) {
+			std::cerr << "ClientSync_get_sync_dir(): ERROR creating dir " << cs->sync_dir << "\n";
+			exit(-1);
+		}
+		// Solicita todo o sync_dir do server
+		ClientSync_sync(cs);
 	}
 	
-	// Dispara thread de SYNC
-	pthread_create(&(cs->syncThread),0,ClientSync_sync,(void*)cs);
+	// Dispara thread de WATCH
+	pthread_create(&(cs->syncThread),0,ClientSync_watch,(void*)cs);
 }
 
-void* ClientSync_sync(void *cs) {
-	std::cout << "ClientSync_sync() thread START\n";
+void* ClientSync_watch(void *cs) {
+	std::cout << "ClientSync_watch() thread START\n";
 	ClientSync *c = (ClientSync*)cs;
 	const char *sync_dir = c->sync_dir.c_str();
 
@@ -124,9 +128,49 @@ void* ClientSync_sync(void *cs) {
 	close( fd );
 
 
-	std::cout << "ClientSync_sync() thread END\n";
+	std::cout << "ClientSync_watch() thread END\n";
 }
 
-void ClientSync_onCloseWrite(ClientSync *cs, char *name) {}
+void ClientSync_sync(ClientSync *cs) {
+	//TODO: baixar sync_dir do server
+
+}
+
+void ClientSync_onCloseWrite(ClientSync *cs, char *name) {
+	std::string path(cs->sync_dir);
+	path.append("/").append(name);
+	int size = FileManager_getFileSize((char*)path.c_str());
+	std::cout<<"ClientSync_onCloseWrite(): file: "<<path<<" size: "<<size<<"\n";
+	int remainder = size % MAX_PAYLOAD_SIZE;
+	int quot = size / MAX_PAYLOAD_SIZE;
+	int num_of_messages;
+	if(remainder == 0)
+		num_of_messages = quot;
+	else
+		num_of_messages = quot + 1;
+	std::cout<<"ClientSync_onCloseWrite(): file: "<<path<<" num_of_messages: "<<num_of_messages<<"\n";
+
+	Message *msg = Message_create(FILE_CLOSE_WRITE,num_of_messages,cs->cc->username,(const char *)name);
+	Message_send(msg,cs->cc->sendsockfd);
+
+	FILE* f = fopen((char*)path.c_str(),"r");
+	if(f == NULL) {
+		std::cerr << "ClientSync_onCloseWrite(): ERROR opening file " << path << "\n";
+		return;
+	}
+	int bytes_recv;
+	while((bytes_recv = fread((void*)msg->payload,MAX_PAYLOAD_SIZE,1,f)) > 0) {
+		std::cout << "ClientSync_onCloseWrite(): read " << bytes_recv << " bytes from file " << path << "\n";
+		if(bytes_recv < MAX_PAYLOAD_SIZE)
+			msg->payload[bytes_recv] = '\0';
+		num_of_messages = num_of_messages - 1;
+		msg->seqn = num_of_messages;
+		Message_send(msg,cs->cc->sendsockfd);
+	}
+	std::cout << "ClientSync_onCloseWrite(): read " << bytes_recv << " bytes from file " << path << "\n";	
+
+
+}
+
 void ClientSync_onDelete(ClientSync *cs, char *name) {}
 void ClientSync_onRename(ClientSync *cs, char *oldname, char* newname) {}

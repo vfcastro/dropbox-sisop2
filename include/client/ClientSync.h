@@ -15,7 +15,8 @@ struct ClientSync {
 
 void ClientSync_init(ClientSync *cs, ClientCommunicator *cc);
 void ClientSync_get_sync_dir(ClientSync *cs);
-void* ClientSync_sync(void * cs);
+void ClientSync_sync(ClientSync *cs);
+void* ClientSync_watch(void * cs);
 void ClientSync_onCloseWrite(ClientSync *cs, char *name);
 void ClientSync_onDelete(ClientSync *cs, char *name);
 void ClientSync_onRename(ClientSync *cs, char *oldname, char* newname);
