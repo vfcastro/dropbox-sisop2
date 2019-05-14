@@ -3,3 +3,4 @@
 #endif
 
 void ClientInterface_start(ClientCommunicator *cc);
+void ClientInterface_command(std::string command,bool* exit);

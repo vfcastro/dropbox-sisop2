@@ -23,10 +23,10 @@ int main (int argc, char **argv)
 	ClientSync_init(&cs,&cc);
 	ClientSync_get_sync_dir(&cs);
 
-	
+
 	ClientInterface_start(&cc);
 	std::cout << "main(): ClientInterface_start() finished\n";
 	std::cout << "main() END\n";
-	
+
 	return 0;
 }
