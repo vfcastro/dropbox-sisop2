@@ -154,7 +154,7 @@ void ClientSync_onCloseWrite(ClientSync *cs, char *name) {
 		num_of_messages = quot + 1;
 	std::cout<<"ClientSync_onCloseWrite(): file: "<<path<<" num_of_messages: "<<num_of_messages<<"\n";
 
-	Message *msg = Message_create(FILE_CLOSE_WRITE,num_of_messages,cs->cc->username,(const char *)name,strlen(name));
+	Message *msg = Message_create(FILE_CLOSE_WRITE,num_of_messages,cs->cc->username,(const char *)name);
 	Message_send(msg,cs->cc->sendsockfd);
 	Message_recv(msg,cs->cc->sendsockfd);
 
@@ -169,9 +169,10 @@ void ClientSync_onCloseWrite(ClientSync *cs, char *name) {
 	
 	while(bytes_recv){
 		std::cout << "ClientSync_onCloseWrite(): read " << bytes_recv << " bytes from file " << path << "\n";
+		if(bytes_recv < MAX_PAYLOAD_SIZE)
+			msg->payload[bytes_recv] = '\0';
 		num_of_messages = num_of_messages - 1;
 		msg->seqn = num_of_messages;
-		msg->size = bytes_recv;
 		Message_send(msg,cs->cc->sendsockfd);
 		bytes_recv = read(f, msg->payload, MAX_PAYLOAD_SIZE);
 	}

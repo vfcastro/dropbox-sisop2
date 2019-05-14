@@ -92,11 +92,18 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 		}
 
 		std::string payload(msg->payload);
-		std::cout << "ServerProcessor_onCloseWrite(): recv payload " << payload << "\n";
-		if(write(f,(const void *)payload.c_str(),msg->size) == -1){
+
+		int size_payload = MAX_PAYLOAD_SIZE;
+		if(msg->seqn == 0){
+			size_payload = ServerProcessor_PayloadSize(msg->payload);
+
+		}
+
+		std::cout << "ServerProcessor_onCloseWrite(): recv payload " << payload << "with " << size_payload << " bytes\n";
+		if(write(f,(const void *)msg->payload, size_payload) == -1){
 			exit(6);
 		}
-		std::cerr << "ServerProcessor_onCloseWrite(): writing "<<msg->size<<"bytes to file:"<<path<<" payload:"<<payload<<"\n";
+		msg->type = OK;
 	}
 
 	//Recupera o connectionId desta conexao
@@ -114,7 +121,18 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	std::cout << "ServerProcessor_onCloseWrite(): END recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
 }
 
+// Funcao nova
+int ServerProcessor_PayloadSize(char *payload){
+	int size = 0;
 
+	for (int i = 0; i < MAX_PAYLOAD_SIZE; ++i){
+		if(payload[i] != '\0'){
+			size++;
+		}
+	}
+
+	return size;
+}
 
 
 
