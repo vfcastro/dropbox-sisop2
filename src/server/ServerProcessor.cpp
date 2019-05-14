@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstring>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -33,7 +34,7 @@ void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
 
 	//Checar se existe sync_dir_<username>
 	//Se não houve, criar
-	std::string sync_dir("./sync_dir_");
+	std::string sync_dir(SYNC_DIR_BASE_NAME);
 	sync_dir.append(msg->username);
 	if(FileManager_createDir((char*)sync_dir.c_str()) == -1) {
 		std::cout<<"ServerProcessor_openSession(): ERROR creating user dir " << sync_dir << "\n";
@@ -91,37 +92,29 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 		}
 
 		std::string payload(msg->payload);
-
-		int size_payload = MAX_PAYLOAD_SIZE;
-		if(msg->seqn == 0){
-			size_payload = ServerProcessor_PayloadSize(msg->payload);
-
-		}
-
-		std::cout << "ServerProcessor_onCloseWrite(): recv payload " << payload << "with " << size_payload << " bytes\n";
-		if(write(f,(const void *)msg->payload, size_payload) == -1){
+		std::cout << "ServerProcessor_onCloseWrite(): recv payload " << payload << "\n";
+		if(write(f,(const void *)payload.c_str(),msg->size) == -1){
 			exit(6);
 		}
-		msg->type = OK;
+		std::cerr << "ServerProcessor_onCloseWrite(): writing "<<msg->size<<"bytes to file:"<<path<<" payload:"<<payload<<"\n";
 	}
+
+	//Recupera o connectionId desta conexao
+	int connectionId = sc->threadConnId.find((pthread_self()))->second;
+	//Posta msg na fila de envio do respectivo connectionId
+	Message *m = (Message*)malloc(sizeof(Message));
+	m->type = FILE_CLOSE_WRITE;
+	strcpy(m->username,msg->username);
+	sc->sendQueue.at(connectionId).push(m);
+
+
 
 	close(f);
 
 	std::cout << "ServerProcessor_onCloseWrite(): END recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
 }
 
-// Funcao nova
-int ServerProcessor_PayloadSize(char *payload){
-	int size = 0;
 
-	for (int i = 0; i < MAX_PAYLOAD_SIZE; ++i){
-		if(payload[i] != '\0'){
-			size++;
-		}
-	}
-
-	return size;
-}
 
 
 

@@ -120,8 +120,8 @@ void* ServerCommunicator_accept(void* sc) {
 					std::cout << "ServerCommunicator_accept(): sent reply OK\n";
 					// thread deve aguardar por msgs na fila identificada pelo connectionId
 					// que vem do campo seqn da msg
-					std::queue<Message> queue;
-					s->sendQueue.insert(std::pair<int,std::queue<Message>>(msg->seqn,queue));
+					std::queue<Message*> queue;
+					s->sendQueue.insert(std::pair<int,std::queue<Message*>>(msg->seqn,queue));
 					ServerCommunicator_send(s,sockfd,msg->seqn);
 				}
 				else
@@ -156,11 +156,17 @@ void ServerCommunicator_send(ServerCommunicator *sc, int sockfd, int connectionI
 	std::cout << "ServerCommunicator_send(): START on connId "<< connectionId <<"\n";
 	// Enquanto socket esta aberto, tenta ler evento para enviar ao client
 	void *buffer = (void*)malloc(1);
-	while(read(sockfd,buffer,1) != -1) {
+	while(1) {
 		// TODO: mutex para acesso a fila!
 		// checa se ha msgs na fila identificada por connectionId
-		if(sc->sendQueue.find(connectionId)->second.size() > 0) {
-			std::cout << "ServerCommunicator_send() SEND!\n";
+		if(sc->sendQueue.at(connectionId).size() > 0) {
+			std::cout << "ServerCommunicator_send() msg RECEIVED ON QUEUE!\n";
+			Message *msg = sc->sendQueue.at(connectionId).front();
+			std::cout << "ServerCommunicator_send() msg username:"<<msg->username<<"\n";
+			sc->sendQueue.at(connectionId).pop();
+			Message_send(msg,sockfd);
+			std::cout << "ServerCommunicator_send() msg SENT!\n";
+			free(msg);
 		}
 			
 	}

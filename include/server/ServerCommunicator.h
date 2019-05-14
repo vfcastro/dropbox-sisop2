@@ -29,7 +29,7 @@ struct ServerCommunicator {
   std::map<pthread_t,int> threadConnId; 
 
   //mapeamento connectionId -> fila de msgs para envio ao cliente
-  std::map<int,std::queue<Message>> sendQueue;
+  std::map<int,std::queue<Message*>> sendQueue;
 	  
 };
 

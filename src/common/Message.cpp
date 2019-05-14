@@ -7,7 +7,7 @@
 
 #include "../../include/common/Message.h"
 
-Message* Message_create(unsigned int type, unsigned int seqn, const char *username, const char *payload) {
+Message* Message_create(unsigned int type, unsigned int seqn, const char *username, const char *payload, int size) {
 	std::cout << "Message_create(): START\n";
 	Message *msg = (Message*) malloc(sizeof(Message));
 	msg->type = type;
@@ -15,7 +15,7 @@ Message* Message_create(unsigned int type, unsigned int seqn, const char *userna
 	memcpy((void*)msg->username,(void*)username,MAX_USERNAME_SIZE);
 	memcpy((void*)msg->payload,(void*)payload,MAX_PAYLOAD_SIZE);
 
-	std::cout << "Message_create(): type:" << msg->type << " seqn:" << msg->seqn << " username:" << msg->username << " payload:" << msg->payload << "\n";
+std::cout << "Message_create(): type:" << msg->type << " seqn:" << msg->seqn << " username:" << msg->username << " payload:" << msg->payload << msg->size << "\n";
 	return msg;
 }
 
@@ -34,6 +34,9 @@ void Message_unmarshall(Message *msg, Message *buffer) {
     address += MAX_USERNAME_SIZE;
 
     memcpy((char*) &(msg->payload), address, MAX_PAYLOAD_SIZE);
+    address += MAX_PAYLOAD_SIZE;
+	
+	memcpy((unsigned int*) &(msg->size), address, sizeof(unsigned int));
 
     std::cout << "Message_unmarshall(): END\n";
 }
@@ -53,6 +56,9 @@ void Message_marshall(Message *msg, Message *buffer) {
     address += MAX_USERNAME_SIZE;
 
     memcpy((char*) address,(void*) &(msg->payload), MAX_PAYLOAD_SIZE);
+    address += MAX_PAYLOAD_SIZE;
+
+    memcpy((unsigned*) address,(void*) &(msg->size), sizeof(unsigned int));
 
     std::cout << "Message_marshall(): END\n";
 }
@@ -62,12 +68,6 @@ int Message_send(Message *msg, int sockfd) {
     Message *buffer = (Message *) malloc(sizeof(Message));
     int bytes_sent;
     
-    std::cout << "\n\n\nMensagem Enviada on fd " << sockfd << "\n";
-    std::cout << "msg.type: " << msg->type << "\n";
-    std::cout << "msg.seqn: " << msg->seqn << "\n";
-    std::cout << "msg.username: " << msg->username << "\n";
-    std::cout << "msg.payload: " << msg->payload << "\n\n\n";
-
     Message_marshall(msg,buffer);
     if((bytes_sent = send(sockfd,(void*)buffer,sizeof(Message),0)) != sizeof(Message)) {
         std::cerr << "Message_send(): send FAILED on fd " << sockfd << "\n";
@@ -95,7 +95,8 @@ int Message_recv(Message *msg, int sockfd) {
     std::cout << "msg.type: " << msg->type << "\n";
     std::cout << "msg.seqn: " << msg->seqn << "\n";
     std::cout << "msg.username: " << msg->username << "\n";
-    std::cout << "msg.payload: " << msg->payload << "\n\n\n";
+    std::cout << "msg.payload: " << msg->payload << "\n";
+    std::cout << "msg.size: " << msg->size << "\n\n\n";
 
 	//free(buffer);
     std::cout << "Message_recv(): END on fd " << sockfd << "\n";
