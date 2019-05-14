@@ -7,3 +7,4 @@
 void ServerProcessor_dispatch(ServerCommunicator *sc, Message *msg);
 void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg);
 void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg);
+int ServerProcessor_PayloadSize(char *payload);

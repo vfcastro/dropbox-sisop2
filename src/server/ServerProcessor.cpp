@@ -91,8 +91,15 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 		}
 
 		std::string payload(msg->payload);
-		std::cout << "ServerProcessor_onCloseWrite(): recv payload " << payload << "\n";
-		if(write(f,(const void *)payload.c_str(),payload.size()) == -1){
+
+		int size_payload = MAX_PAYLOAD_SIZE;
+		if(msg->seqn == 0){
+			size_payload = ServerProcessor_PayloadSize(msg->payload);
+
+		}
+
+		std::cout << "ServerProcessor_onCloseWrite(): recv payload " << payload << "with " << size_payload << " bytes\n";
+		if(write(f,(const void *)msg->payload, size_payload) == -1){
 			exit(6);
 		}
 		msg->type = OK;
@@ -103,7 +110,18 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	std::cout << "ServerProcessor_onCloseWrite(): END recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
 }
 
+// Funcao nova
+int ServerProcessor_PayloadSize(char *payload){
+	int size = 0;
 
+	for (int i = 0; i < MAX_PAYLOAD_SIZE; ++i){
+		if(payload[i] != '\0'){
+			size++;
+		}
+	}
+
+	return size;
+}
 
 
 

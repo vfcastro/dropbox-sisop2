@@ -62,6 +62,12 @@ int Message_send(Message *msg, int sockfd) {
     Message *buffer = (Message *) malloc(sizeof(Message));
     int bytes_sent;
     
+    std::cout << "\n\n\nMensagem Enviada on fd " << sockfd << "\n";
+    std::cout << "msg.type: " << msg->type << "\n";
+    std::cout << "msg.seqn: " << msg->seqn << "\n";
+    std::cout << "msg.username: " << msg->username << "\n";
+    std::cout << "msg.payload: " << msg->payload << "\n\n\n";
+
     Message_marshall(msg,buffer);
     if((bytes_sent = send(sockfd,(void*)buffer,sizeof(Message),0)) != sizeof(Message)) {
         std::cerr << "Message_send(): send FAILED on fd " << sockfd << "\n";
