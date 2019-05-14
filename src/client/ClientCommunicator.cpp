@@ -70,7 +70,7 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
 	cc->recvsockfd = recvsockfd;
 
 	// Solicita abertura de conexao de envio
-	Message *msg = Message_create(OPEN_SEND_CONN,0,std::string(cc->username).c_str(),std::string().c_str(),0);
+	Message *msg = Message_create(OPEN_SEND_CONN,0,std::string(cc->username).c_str(),std::string().c_str());
 	if(Message_send(msg,cc->sendsockfd) != -1) {
 		std::cout << "ClientCommunicator_init(): sent msg OPEN_SEND_CONN\n";
 	    if(Message_recv(msg,cc->sendsockfd) != -1) { 
@@ -95,7 +95,7 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
 
 	// Solicita abertura de conexao de recebimento passando conectionId recebido da OPEN_SEND_CONN no campo seqn
 	int connectionId = msg->seqn;
-	msg = Message_create(OPEN_RECV_CONN,connectionId,std::string(cc->username).c_str(),std::string().c_str(),0);
+	msg = Message_create(OPEN_RECV_CONN,connectionId,std::string(cc->username).c_str(),std::string().c_str());
 	if(Message_send(msg,cc->recvsockfd) != -1) {
 		std::cout << "ClientCommunicator_init(): sent msg OPEN_RECV_CONN\n";
 	    if(Message_recv(msg,cc->recvsockfd) != -1) { 
@@ -149,7 +149,7 @@ void* ClientCommunicator_receive(void *cc) {
 void ClientCommunicator_openSession(ClientCommunicator *cc) {
 	std::cout << "ClientCommunicator_openSession(): START\n";
 
-	Message *msg = Message_create(OPEN_SESSION,0,std::string(cc->username).c_str(),std::string().c_str(),0);
+	Message *msg = Message_create(OPEN_SESSION,0,std::string(cc->username).c_str(),std::string().c_str());
 	if(Message_send(msg,cc->sendsockfd) == -1){
 		std::cerr << "ClientCommunicator_openSession(): ERROR sending OPEN_SESSION\n";
 		exit(-1);

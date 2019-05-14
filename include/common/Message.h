@@ -19,10 +19,9 @@ struct Message {
 	unsigned int seqn; // 0 if the last, > 0 otherwise
 	char username[MAX_USERNAME_SIZE];
 	char payload[MAX_PAYLOAD_SIZE];
-	unsigned int size;
 };
 
-Message* Message_create(unsigned int type, unsigned int seqn, const char *username, const char *payload, int size);
+Message* Message_create(unsigned int type, unsigned int seqn, const char *username, const char *payload);
 void Message_marshall(Message *msg, void *buffer);
 void Message_unmarshall(Message *msg, void *buffer);
 int Message_send(Message *msg, int sockfd);
