@@ -9,10 +9,10 @@ TEST_DIR=./test/
 all: common server client
 
 server:
-	g++ -g $(SERVER_SCR)*.cpp $(BUILD_DIR)*.o -o $(BIN_DIR)server -lpthread
+	g++ -g $(SERVER_SCR)*.cpp $(BUILD_DIR)*.o -o $(BIN_DIR)server -lpthread -std=c++11
 
 client:
-	g++ -g $(CLIENT_SCR)*.cpp $(BUILD_DIR)*.o -o $(BIN_DIR)client -lpthread
+	g++ -g $(CLIENT_SCR)*.cpp $(BUILD_DIR)*.o -o $(BIN_DIR)client -lpthread -std=c++11
 
 common:
 	mkdir -p $(BUILD_DIR)

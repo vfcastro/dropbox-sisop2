@@ -202,6 +202,7 @@ void ServerCommunicator_send(ServerCommunicator *sc, int sockfd, int connectionI
 		// checa se ha msgs na fila identificada por connectionId
 		pthread_mutex_lock(&sc->sendQueueLock);
 		if(sc->sendQueue.at(connectionId).size() > 0) {
+			std::cout << "MENSAGEM RECEBIDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA! " << connectionId << "\n";
 			std::cout << "ServerCommunicator_send() msg RECEIVED ON QUEUE!\n";
 			pthread_mutex_lock(&sc->userSessionsLock);
 			Message_send(sc->sendQueue.at(connectionId).front(),sockfd);

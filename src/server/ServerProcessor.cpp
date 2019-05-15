@@ -6,8 +6,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
-
 #include "../../include/server/ServerProcessor.h"
 #include "../../include/common/FileManager.h"
 
@@ -73,7 +71,6 @@ void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
 		return;
 	}
 
-
 	std::cout << "ServerProcessor_openSession(): sent OK for OPEN_SESSION to client " << msg->username << "\n";
 }
 
@@ -98,42 +95,22 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	path.append("/").append(msg->payload);
 	std::cout << "ServerProcessor_onCloseWrite(): creating file " << path << "\n";
 
-	//Tenta criar o arquivo
-	int f = open((char*)path.c_str(),O_CREAT|O_WRONLY,0600);
-	if(f == -1){
-		std::cerr << "ServerProcessor_onCloseWrite(): ERROR creating file " << path << "\n";
-		return;
-	}
-
-	//QUEUE: posta primeira msg na fila de sincronizacao
-	pthread_mutex_lock(&sc->sendQueueLock);
-	sc->sendQueue.at(connectionId).push(msg);
-	pthread_mutex_unlock(&sc->sendQueueLock);
-
+	// Envia um OK para o cliente
 	msg->type = OK;
 	Message_send(msg,sockfd);
 
-	//Preenche o arquivo conforme recebimento das mensagens
-	while(Message_recv(msg,sockfd) != -1) {
-		// Verifica se tipo = OK, se sim, para de escrever
-		if(msg->type == END){
-			break;
-		}
-
-		std::cout << "ServerProcessor_onCloseWrite(): recv payload with " << msg->seqn << " bytes\n";
-		if(write(f,(const void *)msg->payload, msg->seqn) == -1){
-			exit(6);
-		}
-
-
-		//QUEUE: posta msg na fila de sync
-		pthread_mutex_lock(&sc->sendQueueLock);
-		sc->sendQueue.at(connectionId).push(msg);	
-		pthread_mutex_lock(&sc->sendQueueLock);
-
+	// Começa o recebimento do arquivo
+	if(FileManager_receiveFile(path, msg,sockfd) == -1){
+		std::cout<<"ServerProcessor_onCloseWrite(): Error Receive File\n";
 	}
 
-	close(f);
+	// Propaga o arquivo para o restante dos dispositivos
+	msg->type = 66;
+	
+	pthread_mutex_lock(&sc->sendQueueLock);
+	std::cout<<"ENVIADO NA FILAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n";
+	sc->sendQueue.at(connectionId).push(msg);
+	pthread_mutex_unlock(&sc->sendQueueLock);
 
 	std::cout << "ServerProcessor_onCloseWrite(): END recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
 }
