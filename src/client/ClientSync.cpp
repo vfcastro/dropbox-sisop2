@@ -99,9 +99,8 @@ void* ClientSync_watch(void *cs) {
 	            printf( "The directory %s was IN_MOVED_FROM.\n", event->name );
 	          else {
 	            printf( "The file %s was IN_MOVED_FROM with WD %d\n", event->name, event->wd );
- 				//oldname = (char*)malloc(event->len);
- 				//strcpy(oldname,(const char*)event->name);
-				ClientSync_onDelete(c,event->name);
+ 				oldname = (char*)malloc(event->len);
+ 				strcpy(oldname,(const char*)event->name);
 			  }
 	        }
 
@@ -110,7 +109,7 @@ void* ClientSync_watch(void *cs) {
                 printf( "The directory %s was IN_MOVED_TO.\n", event->name );
               else {
                 printf( "The file %s was IN_MOVED_TO to %s\n", oldname, event->name );
-	          	ClientSync_onCloseWrite(c,event->name);
+	          	ClientSync_onRename(c,oldname,event->name);
 				free(oldname);
 			  }
             }

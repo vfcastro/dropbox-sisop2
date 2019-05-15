@@ -5,3 +5,4 @@
 #endif
 
 void ClientProcessor_dispatch(ClientCommunicator *cc, Message *msg);
+void ClientProcessor_onCloseWrite(ClientCommunicator *cc, Message *msg);

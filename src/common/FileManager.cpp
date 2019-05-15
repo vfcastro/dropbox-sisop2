@@ -34,6 +34,10 @@ int FileManager_openDir(char* name) {
 }
 
 int FileManager_removeFile(std::string name){
+
+
+
+
 }
 int FileManager_renameFile(char* oldname, char* newname);
 

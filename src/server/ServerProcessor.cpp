@@ -1,5 +1,4 @@
 #include <iostream>
-#include <dirent.h>
 #include <sstream>
 #include <string>
 #include <cstring>
@@ -56,9 +55,6 @@ void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
 	pthread_mutex_unlock(&sc->acceptedThreadsLock);
 
-	//TODO: checar numero de sessoes!
-
-
 
 	//Checar se existe sync_dir_<username>
 	//Se não houve, criar
@@ -87,9 +83,11 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	pthread_mutex_lock(&sc->acceptedThreadsLock);
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
 	pthread_mutex_unlock(&sc->acceptedThreadsLock);
+
+	//Recupera o connectionId desta conexao
+	int connectionId = sc->threadConnId.find((pthread_self()))->second;	
 	
 	//primeira msg contem o nome do arquivo, cria caso necessario
-
 	std::string path("./sync_dir_server/");
 	path.append(msg->username).append("/");
 
@@ -112,6 +110,10 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 		return;
 	}
 
+
+	//QUEUE: posta primeira msg na fila de sincronizacao
+	sc->sendQueue.at(connectionId).push(msg);
+
 	msg->type = OK;
 	Message_send(msg,sockfd);
 
@@ -127,17 +129,12 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 		if(write(f,(const void *)msg->payload, msg->seqn) == -1){
 			exit(6);
 		}
-		
-		msg->type = OK;
-	}
 
-	//Recupera o connectionId desta conexao
-	int connectionId = sc->threadConnId.find((pthread_self()))->second;
-	//Posta msg na fila de envio do respectivo connectionId
-	Message *m = (Message*)malloc(sizeof(Message));
-	m->type = FILE_CLOSE_WRITE;
-	strcpy(m->username,msg->username);
-	sc->sendQueue.at(connectionId).push(m);
+
+		//QUEUE: posta msg na fila de sync
+		sc->sendQueue.at(connectionId).push(msg);	
+
+	}
 
 	close(f);
 
@@ -330,62 +327,44 @@ void ServerProcessor_listServerCommand(ServerCommunicator *sc, Message *msg){
 	// Verifica se pasta do usuário existe, se não existe, cria
 	if(FileManager_openDir((char*)path.c_str()) == -1) {
 		if(FileManager_createDir((char*)path.c_str()) == -1) {
-			std::cerr << "Server(): ERROR creating " << path << "\n";
-			exit(-1);
+				std::cerr << "Server(): ERROR creating " << path << "\n";
+				exit(-1);
 		}
 	}
 
-	char output[MAX_PAYLOAD_SIZE];
+	FILE *fp;
+	std::string cmd("ls -l ");
+	cmd.append(path);
 
-	DIR *dir;
-	struct dirent *ent;
-	std::vector<std::string> filelist;
-
-	if((dir = opendir(path.c_str())) != NULL) {
-  		while ((ent = readdir (dir)) != NULL) {
-  			if((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0))
-    			filelist.push_back(ent->d_name);
-  		}
- 		closedir (dir);
-	} else {
-	
-	perror ("");
-	
+  	// Executa comando ls
+	fp = popen(cmd.c_str(), "r");
+	if (fp == NULL) {
+	    printf("Failed to run command\n" );
+	    exit(1);
 	}
 
+	int count = 0;
+	
+	// Envia OK para o cliente
 	msg->type = OK;
 	Message_send(msg, sockfd);
 
-	FILE *fp;
-	
-	for (int i = 0; i < filelist.size(); ++i){
-		std::string cmd("stat --printf='M: %y | A: %x | C: %w ' ");
-		cmd.append(path);
-		cmd.append(filelist[i]);
+	msg->seqn = MAX_PAYLOAD_SIZE;
 
-		std::string payload("");
-		payload.append(filelist[i]);
-		payload.append(" | ");
+	while (fgets(msg->payload, MAX_PAYLOAD_SIZE-1, fp) != NULL) {
+	  	if(count == 0){
+			count = 1;
+			continue;
+		}
 
-		fp = popen(cmd.c_str(), "r");
-		if (fp == NULL) {
-			printf("Failed to run command\n" );
-			exit(1);
-	  	}
+		Message_send(msg, sockfd);
+	}
 
-	  	fgets(output, MAX_PAYLOAD_SIZE-1, fp);
-	  	payload.append(output);
-
-	  	strcpy(msg->payload, payload.c_str());
-	  	msg->seqn = MAX_PAYLOAD_SIZE;
-	  	Message_send(msg, sockfd);
-
-	  	/* close */
-	  	pclose(fp);
-  	}
-
-  	msg->type = END;
+	msg->type = END;
 	Message_send(msg, sockfd);
+
+	pclose(fp);
+
 }
 
 void ServerProcessor_exitCommand(ServerCommunicator *sc, Message *msg){

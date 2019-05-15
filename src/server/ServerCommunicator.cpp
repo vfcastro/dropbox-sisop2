@@ -188,28 +188,23 @@ void ServerCommunicator_receive(ServerCommunicator *sc, int sockfd) {
 		ServerProcessor_dispatch(sc,msg);
 	}
 
-	free(msg);
+	//free(msg);
 	std::cout << "ServerCommunicator_receive(): END " << sockfd << "\n"; 
 }
 
 void ServerCommunicator_send(ServerCommunicator *sc, int sockfd, int connectionId) {
 	std::cout << "ServerCommunicator_send(): START on connId "<< connectionId <<"\n";
 	// Enquanto socket esta aberto, tenta ler evento para enviar ao client
-	void *buffer = (void*)malloc(1);
 	while(1) {
 		// TODO: mutex para acesso a fila!
 		// checa se ha msgs na fila identificada por connectionId
 		if(sc->sendQueue.at(connectionId).size() > 0) {
 			std::cout << "ServerCommunicator_send() msg RECEIVED ON QUEUE!\n";
-			Message *msg = sc->sendQueue.at(connectionId).front();
-			std::cout << "ServerCommunicator_send() msg username:"<<msg->username<<"\n";
+			Message_send(sc->sendQueue.at(connectionId).front(),sockfd);
 			sc->sendQueue.at(connectionId).pop();
-			Message_send(msg,sockfd);
 			std::cout << "ServerCommunicator_send() msg SENT!\n";
-			free(msg);
 		}
 			
 	}
 
-	free(buffer);
 }
