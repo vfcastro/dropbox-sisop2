@@ -7,6 +7,7 @@
 #include "../../include/common/Message.h"
 #include "../../include/client/ClientCommunicator.h"
 #include "../../include/client/ClientProcessor.h"
+#include "../../include/client/ClientSync.h"
 
 void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::string server, unsigned int port) {
 	std::cout << "ClientCommunicator_init(): START\n";
@@ -138,7 +139,8 @@ void* ClientCommunicator_receive(void *cc) {
 	std::cout << "ClientCommunicator_receive(): WAITING for msg on fd " << c->recvsockfd << "\n";
 
     Message *msg = (Message*)malloc(sizeof(Message));
-    while(Message_recv(msg,c->recvsockfd) != -1) {
+    while(1) {
+		Message_recv(msg,c->recvsockfd);
         ClientProcessor_dispatch(c,msg);
     }
 

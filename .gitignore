@@ -1,4 +1,5 @@
 build
 bin/*
-
+test
+\.vscode
 eu-perfil\.png

@@ -1,16 +1,20 @@
-#ifndef __CC_H__
+#include <set>
 #include "../../include/client/ClientCommunicator.h"
-#endif
 
 struct ClientSync {
 	// thread disparada para sync
 	pthread_t syncThread;
+	
 	// sync_dir criado na ClientSync_init
 	std::string sync_dir;
 	
-	// referencia para o ClientCommunicator, para o modulo de sync puder
-	// acessar o sendsockfd para enviar mensagens de criacao de arquivo, etc
+	//conjunto de arquivos sendo sincronizados no momento
+	std::set<std::string> syncFiles;
+	pthread_mutex_t syncFilesLock;
+
+	//Referencia para o ClientCommunicator
 	ClientCommunicator *cc;
+
 };
 
 void ClientSync_init(ClientSync *cs, ClientCommunicator *cc);

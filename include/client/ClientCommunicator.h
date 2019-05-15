@@ -14,7 +14,7 @@ struct ClientCommunicator {
   int recvsockfd;
   pthread_t recvThread;
 
-};
+ };
 
 void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::string server, unsigned int port);
 void ClientCommunicator_start(ClientCommunicator *cc);

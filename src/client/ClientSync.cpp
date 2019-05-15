@@ -22,8 +22,9 @@
 #define BUF_LEN     ( MAX_EVENTS * ( EVENT_SIZE + LEN_NAME )) /*buffer to store the data of events*/
 
 void ClientSync_init(ClientSync *cs, ClientCommunicator *cc) {
-	cs->cc = cc;
 	cs->sync_dir = std::string("./sync_dir_").append(cc->username);
+	cs->cc = cc;
+	pthread_mutex_init(&cs->syncFilesLock,NULL);
 }
 
 void ClientSync_get_sync_dir(ClientSync *cs) {
@@ -99,8 +100,8 @@ void* ClientSync_watch(void *cs) {
 	            printf( "The directory %s was IN_MOVED_FROM.\n", event->name );
 	          else {
 	            printf( "The file %s was IN_MOVED_FROM with WD %d\n", event->name, event->wd );
- 				oldname = (char*)malloc(event->len);
- 				strcpy(oldname,(const char*)event->name);
+ 							oldname = (char*)malloc(event->len);
+ 							strcpy(oldname,(const char*)event->name);
 			  }
 	        }
 
@@ -109,9 +110,9 @@ void* ClientSync_watch(void *cs) {
                 printf( "The directory %s was IN_MOVED_TO.\n", event->name );
               else {
                 printf( "The file %s was IN_MOVED_TO to %s\n", oldname, event->name );
-	          	ClientSync_onRename(c,oldname,event->name);
-				free(oldname);
-			  }
+	          		ClientSync_onRename(c,oldname,event->name);
+								free(oldname);
+			  			}
             }
 
 	        if ( event->mask & IN_DELETE) {
