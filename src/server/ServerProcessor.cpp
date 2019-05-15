@@ -292,9 +292,6 @@ void ServerProcessor_onDelete(ServerCommunicator *sc, Message *msg){
 
 }
 
-// Funcao nova
-int ServerProcessor_PayloadSize(char *payload){
-	int size = 0;
 void ServerProcessor_deleteCommand(ServerCommunicator *sc, Message *msg){
 	std::cout << "ServerProcessor_deleteCommand(): START";
 }
