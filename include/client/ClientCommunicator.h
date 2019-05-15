@@ -21,4 +21,5 @@ void ClientCommunicator_start(ClientCommunicator *cc);
 void* ClientCommunicator_receive(void *cc);
 void ClientCommunicator_openSession(ClientCommunicator *cc);
 
+
 #endif

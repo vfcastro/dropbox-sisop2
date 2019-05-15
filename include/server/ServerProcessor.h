@@ -9,4 +9,9 @@
 void ServerProcessor_dispatch(ServerCommunicator *sc, Message *msg);
 void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg);
 void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg);
-int ServerProcessor_PayloadSize(char *payload);
+void ServerProcessor_onDelete(ServerCommunicator *sc, Message *msg);
+void ServerProcessor_uploadCommand(ServerCommunicator *sc, Message *msg);
+void ServerProcessor_downloadCommand(ServerCommunicator *sc, Message *msg);
+void ServerProcessor_deleteCommand(ServerCommunicator *sc, Message *msg);
+void ServerProcessor_listServerCommand(ServerCommunicator *sc, Message *msg);
+void ServerProcessor_exitCommand(ServerCommunicator *sc, Message *msg);
