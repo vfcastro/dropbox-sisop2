@@ -15,18 +15,24 @@ struct ServerCommunicator {
   unsigned int port;
   unsigned int backlog;
   int sockfd;
+
   pthread_t listenThread;
   
   //acceptedThreads é um mapeamento thread_t -> socketfd
   //é usado pelas threads de conexao para envio/recebimento de msgs nos sockets
   std::map<pthread_t,int> acceptedThreads;
+  pthread_mutex_t acceptedThreadsLock;
 
   //a cada conexao do cliente retorna-se  um id;
   int connectionId;
+  pthread_mutex_t connectionIdLock;
 
   //mapeamento thread_t -> connectionId
   //é usado pelas threads para identificar qual a connectionId em questao
   std::map<pthread_t,int> threadConnId; 
+
+  //mapeamento username -> connectionId
+  std::map< std::string , std::pair<int,int> > userSessions;
 
   //mapeamento connectionId -> fila de msgs para envio ao cliente
   std::map<int,std::queue<Message*>> sendQueue;

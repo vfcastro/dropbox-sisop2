@@ -26,7 +26,10 @@ void ServerProcessor_dispatch(ServerCommunicator *sc, Message *msg) {
 
 void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
 	std::cout << "ServerProcessor_openSession(): recv OPEN_SESSION from client " << msg->username << "\n";
+	
+	pthread_mutex_lock(&sc->acceptedThreadsLock);	
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
+	pthread_mutex_unlock(&sc->acceptedThreadsLock);
 
 	//TODO: checar numero de sessoes!
 
@@ -55,7 +58,10 @@ void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
 
 void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	std::cout << "ServerProcessor_onCloseWrite(): recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
+
+	pthread_mutex_lock(&sc->acceptedThreadsLock);
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
+	pthread_mutex_unlock(&sc->acceptedThreadsLock);
 	
 	//primeira msg contem o nome do arquivo, cria caso necessario
 
@@ -108,12 +114,24 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 
 	//Recupera o connectionId desta conexao
 	int connectionId = sc->threadConnId.find((pthread_self()))->second;
-	//Posta msg na fila de envio do respectivo connectionId
-	Message *m = (Message*)malloc(sizeof(Message));
-	m->type = FILE_CLOSE_WRITE;
-	strcpy(m->username,msg->username);
-	sc->sendQueue.at(connectionId).push(m);
+	
+	//Checa para qual conexao enviar a msg
+	int idtonotify = 0;
+	if(sc->userSessions.at(msg->username).first == connectionId) {
+		if(sc->userSessions.at(msg->username).second != 0)
+			idtonotify = sc->userSessions.at(msg->username).second;
+	}
+	else
+		idtonotify = sc->userSessions.at(msg->username).first;
 
+
+	if(idtonotify != 0) {
+		//Posta msg na fila de envio do respectivo connectionId
+		Message *m = (Message*)malloc(sizeof(Message));
+		m->type = FILE_CLOSE_WRITE;
+		strcpy(m->username,msg->username);
+		sc->sendQueue.at(idtonotify).push(m);
+	}
 
 
 	close(f);

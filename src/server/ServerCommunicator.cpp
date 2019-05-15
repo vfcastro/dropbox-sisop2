@@ -37,6 +37,14 @@ void ServerCommunicator_init(ServerCommunicator *sc, unsigned int port, unsigned
 		std::cout << "ServerCommunicator_init(): ERROR on binding\n";
 		exit(-1);
 	}
+
+
+	//Inicializa MUTEXes
+	pthread_mutex_init(&sc->acceptedThreadsLock, NULL);
+	pthread_mutex_init(&sc->connectionIdLock, NULL);
+
+
+
 	std::cout << "ServerCommunicator_init(): bind OK\n";
 	std::cout << "ServerCommunicator_init(): END\n";
 }
@@ -68,12 +76,15 @@ void* ServerCommunicator_listen(void* sc) {
 			std::cout << "ServerCommunicator_listen(): ERROR on accept\n";
 		}
 		else {
+			
+			//MUTEX acceptThreads
+			pthread_mutex_lock(&s->acceptedThreadsLock);
 			pthread_create(acceptThread,0,ServerCommunicator_accept,(void*)sc);
 			s->acceptedThreads.insert(std::pair<pthread_t,int>(*acceptThread,*newsockfd));
+			pthread_mutex_unlock(&s->acceptedThreadsLock);
+
 			std::cout << "ServerCommunicator_listen(): acceptThread " << *acceptThread << " fd " << *newsockfd << " created\n";
 
-			// TODO: MUTEX no acesso ao Map!
-			usleep(100000);
 		}
 	
 		free(connection);
@@ -83,13 +94,15 @@ void* ServerCommunicator_listen(void* sc) {
 }
 
 void* ServerCommunicator_accept(void* sc) {
-	// TODO: MUTEX no acesso ao Map!
-	usleep(100000);
 	std::cout << "ServerCommunicator_accept(): START thread " << pthread_self() << "\n";
 
-	// adiciona mapeamento thread,sockfd
 	ServerCommunicator *s = (ServerCommunicator*)sc;
+	
+	// adiciona mapeamento thread,sockfd
+	// MUTEX acceptedThreadsLock
+	pthread_mutex_lock(&s->acceptedThreadsLock);
 	int sockfd = s->acceptedThreads.find(pthread_self())->second;
+	pthread_mutex_unlock(&s->acceptedThreadsLock);
 
 	Message *msg = (Message*) malloc(sizeof(Message));
 
@@ -98,9 +111,32 @@ void* ServerCommunicator_accept(void* sc) {
 		if(msg->type == OPEN_SEND_CONN) {
 			std::cout << "ServerCommunicator_accept(): read msg OPEN_SEND_CONN\n";		
 
+			/* SECAO CRITICA */
 			//add map thread -> connectionId
+			pthread_mutex_lock(&s->connectionIdLock);
 			s->connectionId = s->connectionId+1;
 			s->threadConnId.insert(std::pair<pthread_t,int>(pthread_self(),s->connectionId));
+			
+			//tenta criar uma sessao
+			if(s->userSessions.insert(std::pair<std::string,std::pair<int,int> >(msg->username,std::pair<int,int>(s->connectionId,0))).second == false) {
+				//ja existia pelo uma sessão
+				//checa se o segundo slot de sessao esta vazio
+				if(s->userSessions.at(msg->username).second == 0)
+					//cria segunda sessao
+					s->userSessions.at(msg->username).second = s->connectionId;
+				else {
+					// Limite de sessoes excedido
+					msg->type = NOK;
+					Message_send(msg,sockfd);
+					std::cout<<"ServerCommunicator_accept(): SESSIONS LIMIT EXCEEDED\n";
+				}
+			}
+					
+
+			pthread_mutex_unlock(&s->connectionIdLock);
+			/* FINAL SECAO CRITICA */
+
+
 
 			// passa-se ao cliente o connId pelo campo seqn
 			msg->type = OK;
@@ -136,7 +172,11 @@ void* ServerCommunicator_accept(void* sc) {
 
 	//free(msg);
 	close(sockfd);
-	s->acceptedThreads.erase(pthread_self());	
+
+	pthread_mutex_lock(&s->acceptedThreadsLock);
+	s->acceptedThreads.erase(pthread_self());
+	pthread_mutex_unlock(&s->acceptedThreadsLock);
+
 	std::cout << "ServerCommunicator_accept(): ENDED thread " << pthread_self() << "\n"; 
 }
 
