@@ -14,6 +14,9 @@
 #define FILE_CLOSE_WRITE 6
 #define END 7
 #define DELETE_FILE 8
+#define UPLOAD_FILE_CMD 9
+#define DOWNLOAD_FILE_CMD 10 
+#define LIST_SERVER_CMD 11
 
 
 struct Message {

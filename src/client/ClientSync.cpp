@@ -169,13 +169,12 @@ void ClientSync_onCloseWrite(ClientSync *cs, char *name) {
 
 	while(bytes_recv){
 		std::cout << "ClientSync_onCloseWrite(): read " << bytes_recv << " bytes from file " << path << "\n";
-		if(bytes_recv < MAX_PAYLOAD_SIZE)
-			msg->payload[bytes_recv] = '\0';
-		num_of_messages = num_of_messages - 1;
-		msg->seqn = num_of_messages;
+		msg->seqn = bytes_recv;
 		Message_send(msg,cs->cc->sendsockfd);
 		bytes_recv = read(f, msg->payload, MAX_PAYLOAD_SIZE);
 	}
+
+	close(f);
 
 	msg->type = END;
 	Message_send(msg,cs->cc->sendsockfd);
