@@ -30,12 +30,15 @@ struct ServerCommunicator {
   //mapeamento thread_t -> connectionId
   //é usado pelas threads para identificar qual a connectionId em questao
   std::map<pthread_t,int> threadConnId; 
+  pthread_mutex_t threadConnIdLock;
 
   //mapeamento username -> connectionId
   std::map< std::string , std::pair<int,int> > userSessions;
+  pthread_mutex_t userSessionsLock;
 
   //mapeamento connectionId -> fila de msgs para envio ao cliente
   std::map<int,std::queue<Message*>> sendQueue;
+  pthread_mutex_t sendQueueLock;
 	  
 };
 

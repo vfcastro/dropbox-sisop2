@@ -26,18 +26,10 @@ void ClientProcessor_dispatch(ClientCommunicator *cc, Message *msg) {
 void ClientProcessor_onCloseWrite(ClientCommunicator *cc, Message *msg) {
    	std::cout << "ClientProcessor_onCloseWrite(): recv FILE_CLOSE_WRITE from server " << msg->username << "\n";
 
-
    	//primeira msg contem o nome do arquivo, cria caso necessario
    	std::string path("./sync_dir_");
    	path.append(msg->username).append("/");
 
-   	// Verifica se pasta do usuário existe, se não existe, cria
-   	if(FileManager_openDir((char*)path.c_str()) == -1) {
-   	    if(FileManager_createDir((char*)path.c_str()) == -1) {
-   	            std::cerr << "ClienteProcessor_onCloseWrite(): ERROR creating " << path << "\n";
-   	            exit(-1);
-   	    }
-   	}
 
    	path.append(msg->payload);
 

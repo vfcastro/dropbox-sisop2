@@ -85,34 +85,30 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	pthread_mutex_unlock(&sc->acceptedThreadsLock);
 
 	//Recupera o connectionId desta conexao
+	pthread_mutex_lock(&sc->connectionIdLock);
 	int connectionId = sc->threadConnId.find((pthread_self()))->second;	
-	
-	//primeira msg contem o nome do arquivo, cria caso necessario
-	std::string path("./sync_dir_server/");
-	path.append(msg->username).append("/");
+	pthread_mutex_unlock(&sc->connectionIdLock);
 
-	// Verifica se pasta do usuário existe, se não existe, cria
-	if(FileManager_openDir((char*)path.c_str()) == -1) {
-		if(FileManager_createDir((char*)path.c_str()) == -1) {
-				std::cerr << "Server(): ERROR creating " << path << "\n";
-				exit(-1);
-		}
-	}
+	//Recupera o sync_dir_<username>
+	std::string sync_dir(SYNC_DIR_BASE_NAME);
+	sync_dir.append(msg->username);
 
-	path.append(msg->payload);
-
+	//Monta o path com o nome do arquivo recebido no payload da msg
+	std::string path(sync_dir);
+	path.append("/").append(msg->payload);
 	std::cout << "ServerProcessor_onCloseWrite(): creating file " << path << "\n";
 
+	//Tenta criar o arquivo
 	int f = open((char*)path.c_str(),O_CREAT|O_WRONLY,0600);
-
 	if(f == -1){
 		std::cerr << "ServerProcessor_onCloseWrite(): ERROR creating file " << path << "\n";
 		return;
 	}
 
-
 	//QUEUE: posta primeira msg na fila de sincronizacao
+	pthread_mutex_lock(&sc->sendQueueLock);
 	sc->sendQueue.at(connectionId).push(msg);
+	pthread_mutex_unlock(&sc->sendQueueLock);
 
 	msg->type = OK;
 	Message_send(msg,sockfd);
@@ -125,14 +121,15 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 		}
 
 		std::cout << "ServerProcessor_onCloseWrite(): recv payload with " << msg->seqn << " bytes\n";
-		
 		if(write(f,(const void *)msg->payload, msg->seqn) == -1){
 			exit(6);
 		}
 
 
 		//QUEUE: posta msg na fila de sync
+		pthread_mutex_lock(&sc->sendQueueLock);
 		sc->sendQueue.at(connectionId).push(msg);	
+		pthread_mutex_lock(&sc->sendQueueLock);
 
 	}
 
@@ -204,7 +201,9 @@ void ServerProcessor_uploadCommand(ServerCommunicator *sc, Message *msg){
 		Message *m = (Message*)malloc(sizeof(Message));
 		m->type = FILE_CLOSE_WRITE;
 		strcpy(m->username,msg->username);
+		pthread_mutex_lock(&sc->sendQueueLock);
 		sc->sendQueue.at(idtonotify).push(m);
+		pthread_mutex_unlock(&sc->sendQueueLock);
 	}
 	//Posta msg na fila de envio do respectivo connectionId
 	Message *m = (Message*)malloc(sizeof(Message));
@@ -306,7 +305,9 @@ void ServerProcessor_onDelete(ServerCommunicator *sc, Message *msg){
 	Message *m = (Message*)malloc(sizeof(Message));
 	m->type = DELETE_FILE;
 	strcpy(m->username,msg->username);
+	pthread_mutex_lock(&sc->sendQueueLock);
 	sc->sendQueue.at(connectionId).push(m);
+	pthread_mutex_unlock(&sc->sendQueueLock);
 
 
 	std::cout << "ServerProcessor_onDelete(): END recv DELETE_FILE from client " << msg->username << "\n";

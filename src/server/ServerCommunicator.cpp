@@ -42,8 +42,9 @@ void ServerCommunicator_init(ServerCommunicator *sc, unsigned int port, unsigned
 	//Inicializa MUTEXes
 	pthread_mutex_init(&sc->acceptedThreadsLock, NULL);
 	pthread_mutex_init(&sc->connectionIdLock, NULL);
-
-
+	pthread_mutex_init(&sc->threadConnIdLock, NULL);
+	pthread_mutex_init(&sc->userSessionsLock, NULL);
+	pthread_mutex_init(&sc->sendQueueLock, NULL);
 
 	std::cout << "ServerCommunicator_init(): bind OK\n";
 	std::cout << "ServerCommunicator_init(): END\n";
@@ -157,7 +158,9 @@ void* ServerCommunicator_accept(void* sc) {
 					// thread deve aguardar por msgs na fila identificada pelo connectionId
 					// que vem do campo seqn da msg
 					std::queue<Message*> queue;
+					pthread_mutex_lock(&s->sendQueueLock);
 					s->sendQueue.insert(std::pair<int,std::queue<Message*>>(msg->seqn,queue));
+					pthread_mutex_unlock(&s->sendQueueLock);
 					ServerCommunicator_send(s,sockfd,msg->seqn);
 				}
 				else
@@ -196,14 +199,17 @@ void ServerCommunicator_send(ServerCommunicator *sc, int sockfd, int connectionI
 	std::cout << "ServerCommunicator_send(): START on connId "<< connectionId <<"\n";
 	// Enquanto socket esta aberto, tenta ler evento para enviar ao client
 	while(1) {
-		// TODO: mutex para acesso a fila!
 		// checa se ha msgs na fila identificada por connectionId
+		pthread_mutex_lock(&sc->sendQueueLock);
 		if(sc->sendQueue.at(connectionId).size() > 0) {
 			std::cout << "ServerCommunicator_send() msg RECEIVED ON QUEUE!\n";
+			pthread_mutex_lock(&sc->userSessionsLock);
 			Message_send(sc->sendQueue.at(connectionId).front(),sockfd);
 			sc->sendQueue.at(connectionId).pop();
+			pthread_mutex_unlock(&sc->userSessionsLock);
 			std::cout << "ServerCommunicator_send() msg SENT!\n";
 		}
+		pthread_mutex_unlock(&sc->sendQueueLock);
 			
 	}
 
