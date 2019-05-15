@@ -13,6 +13,8 @@
 #define CREATE_FILE 5
 #define FILE_CLOSE_WRITE 6
 #define END 7
+#define DELETE_FILE 8
+
 
 struct Message {
 	unsigned int type;
