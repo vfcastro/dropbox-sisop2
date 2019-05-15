@@ -4,8 +4,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+
+
 #include "../../include/server/ServerProcessor.h"
 #include "../../include/common/FileManager.h"
+
 
 void ServerProcessor_dispatch(ServerCommunicator *sc, Message *msg) {
 	std::cout << "ServerProcessor_dispatch(): START\n";
@@ -13,14 +16,20 @@ void ServerProcessor_dispatch(ServerCommunicator *sc, Message *msg) {
 		case OPEN_SESSION:
 			ServerProcessor_openSession(sc,msg);
 		break;
-	
+
 		case FILE_CLOSE_WRITE:
 			ServerProcessor_onCloseWrite(sc,msg);
 		break;
+		case DELETE_FILE:
+			ServerProcessor_onDelete(sc,msg);
+		break;
+		default:
+			std::cout<<"ERROR MSG TYPE INVALID"<<std::endl;
+			break;
 
 	}
 
-	
+
 	std::cout << "ServerProcessor_dispatch(): END\n";
 }
 
@@ -56,7 +65,7 @@ void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
 void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	std::cout << "ServerProcessor_onCloseWrite(): recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
-	
+
 	//primeira msg contem o nome do arquivo, cria caso necessario
 
 	std::string path("./sync_dir_server/");
@@ -75,7 +84,7 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	std::cout << "ServerProcessor_onCloseWrite(): creating file " << path << "\n";
 
 	int f = open((char*)path.c_str(),O_CREAT|O_WRONLY,0600);
-	
+
 	if(f == -1){
 		std::cerr << "ServerProcessor_onCloseWrite(): ERROR creating file " << path << "\n";
 		return;
@@ -121,6 +130,56 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	std::cout << "ServerProcessor_onCloseWrite(): END recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
 }
 
+void ServerProcessor_onDelete(ServerCommunicator *sc, Message *msg){
+	std::cout << "ServerProcessor_onDelete(): recv DELETE_FILE from client " << msg->username << "\n";
+	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
+
+	//primeira msg contem o nome do arquivo, cria caso necessario
+
+	std::string path("./sync_dir_server/");
+	path.append(msg->username).append("/");
+
+	// Verifica se pasta do usuário existe, se não existe, cria
+	if(FileManager_openDir((char*)path.c_str()) == -1) {
+		if(FileManager_createDir((char*)path.c_str()) == -1) {
+				std::cerr << "Server(): ERROR creating " << path << "\n";
+				exit(-1);
+		}
+	}
+
+	path.append(msg->payload);
+
+	std::cout << "ServerProcessor_onDelete(): removing file " << path << "\n";
+
+	const char *c = path.c_str();
+
+    int Removed=std::remove(c);
+
+
+	if(Removed==0){
+		std::cout<<"File "<<path <<"removed from "<<msg->username<<"'s"<<" sync_dir"<<std::endl;
+	}
+	else{
+		std::cout<<"File "<<path <<"wasn't inside "<<msg->username<<"'s"<<" sync_dir"<<std::endl;
+	}
+
+
+	msg->type = OK;
+	Message_send(msg,sockfd);
+
+	//Recupera o connectionId desta conexao
+	int connectionId = sc->threadConnId.find((pthread_self()))->second;
+	//Posta msg na fila de envio do respectivo connectionId
+	Message *m = (Message*)malloc(sizeof(Message));
+	m->type = DELETE_FILE;
+	strcpy(m->username,msg->username);
+	sc->sendQueue.at(connectionId).push(m);
+
+
+	std::cout << "ServerProcessor_onDelete(): END recv DELETE_FILE from client " << msg->username << "\n";
+
+}
+
 // Funcao nova
 int ServerProcessor_PayloadSize(char *payload){
 	int size = 0;
@@ -133,7 +192,3 @@ int ServerProcessor_PayloadSize(char *payload){
 
 	return size;
 }
-
-
-
-
