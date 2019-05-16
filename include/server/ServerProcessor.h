@@ -17,4 +17,5 @@ void ServerProcessor_listServerCommand(ServerCommunicator *sc, Message *msg);
 void ServerProcessor_exitCommand(ServerCommunicator *sc, Message *msg);
 void ServerProcessor_propagateFiles(ServerCommunicator *sc, int connectionId, Message *msg, std::string filename, int mode);
 void ServerProcessor_getSync(ServerCommunicator *sc, Message *msg);
+void ServerProcessor_exit(ServerCommunicator *sc, Message *msg);
 void ServerProcessor_propagateDelete(ServerCommunicator *sc, int connectionId, Message *msg, std::string filename);

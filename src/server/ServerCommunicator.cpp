@@ -173,7 +173,7 @@ void* ServerCommunicator_accept(void* sc) {
 		std::cerr << "ServerCommunicator_accept(): ERROR recv msg\n";
 	
 
-	//free(msg);
+	free(msg);
 	close(sockfd);
 
 	pthread_mutex_lock(&s->acceptedThreadsLock);
@@ -191,7 +191,9 @@ void ServerCommunicator_receive(ServerCommunicator *sc, int sockfd) {
 		ServerProcessor_dispatch(sc,msg);
 	}
 
-	//free(msg);
+	ServerProcessor_exit(sc,msg);
+
+	free(msg);
 	// std::cout << "ServerCommunicator_receive(): END " << sockfd << "\n"; 
 }
 
@@ -214,6 +216,8 @@ void ServerCommunicator_send(ServerCommunicator *sc, int sockfd, int connectionI
 
 			if(Message_send(msg, sockfd) == -1){
 				std::cerr << "ServerCommunicator_send() Error send msg!\n";
+				ServerProcessor_exit(sc,msg);
+				return;
 			}
 			free(msg);
 			sc->sendQueue.at(connectionId).pop();
