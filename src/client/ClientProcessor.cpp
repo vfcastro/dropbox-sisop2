@@ -78,17 +78,25 @@ void ClientProcessor_receivePropagate(ClientCommunicator *cc, Message *msg) {
 
    pthread_mutex_lock(&cc->syncFilesLock);
    std::cout << "ClientProcessor_receivePropagate(): entrou Mutex \n";
-   cc->pauseSync = 1;
+   //cc->pauseSync = 1;
+
+	//Adiciona filename na lista de sicronizacao
+	cc->syncFiles.insert(msg->payload);
+
    // Começa o recebimento do arquivo
    if(FileManager_receiveFile(path, msg, cc->recvsockfd) == -1){
       std::cout<<"ClientProcessor_receivePropagate(): Error Receive File\n";
    }
    std::cout<<"========================== ESPERANDO INICIO\n";
    std::cout<<"========================== ESPERANDO FIM\n";
-   cc->pauseSync = 0;
+   //cc->pauseSync = 0;
+
+	//Remove filename na lista de sync
+	cc->syncFiles.erase(msg->payload);
+
    std::cout << "ClientProcessor_receivePropagate(): desativou Mutex \n";
    pthread_mutex_unlock(&cc->syncFilesLock);
-	std::cout << "ClientProcessor_receivePropagate(): saiu Mutex \n";
+   std::cout << "ClientProcessor_receivePropagate(): saiu Mutex \n";
    
 
    std::cout << "ClientProcessor_receivePropagate(): END recv FILE_CLOSE_WRITE from client " << msg->username << "\n";

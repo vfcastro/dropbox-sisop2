@@ -83,6 +83,9 @@ int FileManager_sendFile(std::string path, Message *msg, int socket){
 int FileManager_sendFile2Queue(ServerCommunicator *sc, std::string path, Message *msg, int connectionId){
 	int f;
 
+	std::string full_path("./sync_dir_");
+	full_path.append(msg->username).append("/").append(path);
+
 	pthread_mutex_lock(&sc->sendQueueLock);
 
 	// Necessita criar uma nova mensagem, se não o endereço na fila de mensagens vai ser igual pra todas
@@ -91,8 +94,8 @@ int FileManager_sendFile2Queue(ServerCommunicator *sc, std::string path, Message
 	// Envia mensagem avisando que vai ter arquivo pra sincronizar
 	sc->sendQueue.at(connectionId).push(msg_to_send);
 
-	if((f = open(path.c_str(), O_RDONLY)) == -1){
-		std::cerr << "FileManager_sendFile(): ERROR opening file " << path << "\n";
+	if((f = open(full_path.c_str(), O_RDONLY)) == -1){
+		std::cerr << "FileManager_sendFile(): ERROR opening file " << full_path << "\n";
 		return -1;
 	}
 
@@ -102,7 +105,7 @@ int FileManager_sendFile2Queue(ServerCommunicator *sc, std::string path, Message
 	while(bytes_recv){
 		std::cout << "$$$$$$$$$$$$$$$$$$$$: " << msg_to_send->payload << "\n";
 
-		std::cout << "FileManager_sendFile(): read " << bytes_recv << " bytes from file " << path << "\n";
+		std::cout << "FileManager_sendFile(): read " << bytes_recv << " bytes from file " << full_path << "\n";
 		msg_to_send->seqn = bytes_recv;
 
 		std::cout<<"Enviando arquivos na fila | msg_to_send->type: " << msg_to_send->type << "\n";

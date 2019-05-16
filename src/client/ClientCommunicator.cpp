@@ -12,7 +12,7 @@
 void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::string server, unsigned int port) {
 	// std::cout << "ClientCommunicator_init(): START\n";
 
-	cc->pauseSync = 0;
+	//cc->pauseSync = 0;
 	pthread_mutex_init(&cc->syncFilesLock, NULL);
 
 	if(username.size() > MAX_USERNAME_SIZE) {

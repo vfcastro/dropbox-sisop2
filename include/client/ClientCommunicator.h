@@ -3,6 +3,7 @@
 
 #include <string>
 #include <pthread.h>
+#include <set>
 #include "../../include/common/Message.h"
 
 struct ClientCommunicator {
@@ -14,8 +15,10 @@ struct ClientCommunicator {
   int recvsockfd;
   pthread_t recvThread;
 
-  int pauseSync = 0;
+  //int pauseSync = 0;
   pthread_mutex_t syncFilesLock;
+  //conjunto de arquivos sendo sincronizados no momento
+	std::set<std::string> syncFiles;
 
  };
 

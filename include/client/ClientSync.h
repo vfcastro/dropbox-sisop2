@@ -8,9 +8,6 @@ struct ClientSync {
 	// sync_dir criado na ClientSync_init
 	std::string sync_dir;
 	
-	//conjunto de arquivos sendo sincronizados no momento
-	std::set<std::string> syncFiles;
-
 	//Referencia para o ClientCommunicator
 	ClientCommunicator *cc;
 
