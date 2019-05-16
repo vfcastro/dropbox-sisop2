@@ -56,7 +56,7 @@ void* ClientSync_watch(void *cs) {
 	/* Initialize Inotify*/
 	fd = inotify_init();
 
-	int pauseSync;
+	//int pauseSync;
 
 	if ( fd < 0 ) {
 		perror( "Couldn't initialize inotify");
@@ -87,59 +87,65 @@ void* ClientSync_watch(void *cs) {
 	      	
 	      	if(event->len){
 		        if(event->mask & IN_CLOSE_WRITE){
-		          	if(event->mask & IN_ISDIR){
-		            	printf("The directory %s was modified.\n", event->name );
+		          if(event->mask & IN_ISDIR){
+		          	 	printf("The directory %s was modified.\n", event->name );
 		        	}
-		          	else{
-						printf("The file %s was IN_CLOSE_WRITE with WD %d\n", event->name, event->wd );
-			       		pthread_mutex_lock(&c->cc->syncFilesLock);
-			       		std::cout << "inotify(): entrou Mutex \n";   
-						pauseSync = c->cc->pauseSync;
-						if(pauseSync == 1){
-							std::cout << "inotify(): pause = Mutex \n";   
-						}else{
-							ClientSync_onCloseWrite(c,event->name);
+							else{
+									printf("The file %s was IN_CLOSE_WRITE with WD %d\n", event->name, event->wd );
+									//std::cout << "inotify(): entrou Mutex \n";   
+									//pauseSync = c->cc->pauseSync;
+									//if(pauseSync == 1){
+									//	std::cout << "inotify(): pause = Mutex \n";   
+									//}else{
+									
+									// Checa se arquivo eh de sincronizacao
+									pthread_mutex_lock(&c->cc->syncFilesLock);
+									if(c->cc->syncFiles.find(event->name) == c->cc->syncFiles.end()) {
+										pthread_mutex_unlock(&c->cc->syncFilesLock);	
+										ClientSync_onCloseWrite(c,event->name);
+									}
+									pthread_mutex_unlock(&c->cc->syncFilesLock);
+									std::cout << "inotify(): saiu Mutex \n"; 
+							}
+							
 						}
-						pthread_mutex_unlock(&c->cc->syncFilesLock);
-						std::cout << "inotify(): saiu Mutex \n"; 
-			        }
-		        }
+					}
 
-		        if( event->mask & IN_MOVED_FROM) {
-		          	if(event->mask & IN_ISDIR){
-		            	printf("The directory %s was IN_MOVED_FROM.\n", event->name );
-		          	}
-		          	else{
-			            printf("The file %s was IN_MOVED_FROM with WD %d\n", event->name, event->wd );
+		      if( event->mask & IN_MOVED_FROM) {
+		       	if(event->mask & IN_ISDIR){
+		         	printf("The directory %s was IN_MOVED_FROM.\n", event->name );
+		       	}
+		      	else{
+			        printf("The file %s was IN_MOVED_FROM with WD %d\n", event->name, event->wd );
 		 				oldname = (char*)malloc(event->len);
 		 				strcpy(oldname,(const char*)event->name);
 				  	}
-		        }
+		      }
 
-		  	  	if(event->mask & IN_MOVED_TO){
-	              	if (event->mask & IN_ISDIR){
-	            		printf("The directory %s was IN_MOVED_TO.\n", event->name );
-	            	}
-	            	else{
-		                printf("The file %s was IN_MOVED_TO to %s\n", oldname, event->name );
-			          	ClientSync_onRename(c,oldname,event->name);
-						free(oldname);
+		  	  if(event->mask & IN_MOVED_TO){
+	         	if (event->mask & IN_ISDIR){
+	         		printf("The directory %s was IN_MOVED_TO.\n", event->name );
+	         	}
+	        	else{
+		          printf("The file %s was IN_MOVED_TO to %s\n", oldname, event->name );
+			        ClientSync_onRename(c,oldname,event->name);
+							free(oldname);
 				  	}
-	            }
+	        }
 
-		        if(event->mask & IN_DELETE) {
-			        if (event->mask & IN_ISDIR){
-			            printf("The directory %s was IN_DELETE.\n", event->name );
-			        }
-			        else
-			            printf("The file %s was IN_DELETE with WD %d\n", event->name, event->wd );
-			          	ClientSync_onDelete(c,event->name);
-		        }
+		      if(event->mask & IN_DELETE) {
+			      if (event->mask & IN_ISDIR){
+			          printf("The directory %s was IN_DELETE.\n", event->name );
+			      }
+			      else
+			          printf("The file %s was IN_DELETE with WD %d\n", event->name, event->wd );
+			        	ClientSync_onDelete(c,event->name);
+		      }
 
-		        i += EVENT_SIZE + event->len;
-	      	}
+		      i += EVENT_SIZE + event->len;
+	      }
 	    }
-	  }
+	  
 
 	inotify_rm_watch(fd, wd);
 	close(fd);
