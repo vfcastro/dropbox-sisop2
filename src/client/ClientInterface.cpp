@@ -16,7 +16,8 @@ void ClientInterface_start(ClientCommunicator *cc) {
 	while(!exit){
 		std::cout << "# ";
 		std::getline(std::cin,command);
-		ClientInterface_command(command, &exit, cc);
+		if(!command.empty())
+			ClientInterface_command(command, &exit, cc);
 	}
 
 	// std::cout << "ClientInterface_start(): STOP\n";
@@ -277,4 +278,7 @@ void ClientInterface_listClient(ClientCommunicator *cc){
 
 void ClientInterface_exit(ClientCommunicator *cc){
 	std::cout << "ClientInterface_exit(): START";
+	Message *msg = Message_create(USER_EXIT, 0, cc->username, "");
+	Message_send(msg,cc->sendsockfd);
+	exit(0);
 }

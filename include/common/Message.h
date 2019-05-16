@@ -20,6 +20,7 @@
 #define S2C_PROPAGATE 12
 #define GET_SYNC_DIR 13
 #define END_SYNC 14
+#define USER_EXIT 15
 
 
 struct Message {

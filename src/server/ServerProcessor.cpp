@@ -41,6 +41,10 @@ void ServerProcessor_dispatch(ServerCommunicator *sc, Message *msg) {
 			ServerProcessor_getSync(sc,msg);
 		break;
 
+		case USER_EXIT:
+			ServerProcessor_exit(sc,msg);
+		break;
+
 		default:
 			std::cout<<"ERROR MSG TYPE INVALID"<<std::endl;
 			break;
@@ -446,5 +450,34 @@ void ServerProcessor_getSync(ServerCommunicator *sc, Message *msg){
 		msg->type = NOK;
 		Message_send(msg, sockfd);
 	}
+
+}
+
+void ServerProcessor_exit(ServerCommunicator *sc, Message *msg){
+	std::cout << "user "<<msg->username<<" exited.\n";
+/*	std::pair<int,int> connection_ids;
+	
+	pthread_mutex_lock(&sc->userSessionsLock);
+	connection_ids = sc->userSessions.find(msg->username)->second;
+	
+	//Recupera o connectionId desta conexao
+	pthread_mutex_lock(&sc->connectionIdLock);
+	int connectionId = sc->threadConnId.find((pthread_self()))->second;	
+	if(connection_ids.first == connectionId) {
+		if(connection_ids.second == 0)
+			sc->userSessions.at(msg->username).first = 0;
+		else
+		{
+			sc->userSessions.at(msg->username).first = connection_ids.second;
+			sc->userSessions.at(msg->username).second = 0;
+		}		
+	}
+	else
+	{
+		sc->userSessions.at(msg->username).second = 0;
+	}
+	pthread_mutex_unlock(&sc->connectionIdLock);
+	pthread_mutex_unlock(&sc->userSessionsLock);
+	*/	
 
 }

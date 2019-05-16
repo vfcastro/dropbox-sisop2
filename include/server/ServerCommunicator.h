@@ -48,4 +48,5 @@ void* ServerCommunicator_listen(void* sc);
 void* ServerCommunicator_accept(void* sc);
 void ServerCommunicator_receive(ServerCommunicator *sc, int sockfd);
 void ServerCommunicator_send(ServerCommunicator *sc, int sockfd, int connectionId);
+void ServerCommunicator_exit(ServerCommunicator *sc, Message *msg);
 #endif
