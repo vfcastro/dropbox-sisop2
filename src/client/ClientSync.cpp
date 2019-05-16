@@ -45,7 +45,7 @@ void ClientSync_get_sync_dir(ClientSync *cs) {
 }
 
 void* ClientSync_watch(void *cs) {
-	std::cout << "ClientSync_watch() thread START\n";
+	// std::cout << "ClientSync_watch() thread START\n";
 	ClientSync *c = (ClientSync*)cs;
 	const char *sync_dir = c->sync_dir.c_str();
 
@@ -72,7 +72,7 @@ void* ClientSync_watch(void *cs) {
 	    printf("Couldn't add watch to %s\n",sync_dir);
 	}
 	else{
-	    printf("Watching:: %s\n",sync_dir);
+	    printf("Watching:: %s\n\n",sync_dir);
 	}
 
 	/* do it forever*/
@@ -90,69 +90,61 @@ void* ClientSync_watch(void *cs) {
 	      	
 	      	if(event->len){
 		        if(event->mask & IN_CLOSE_WRITE){
-		          if(event->mask & IN_ISDIR){
-		          	 	printf("The directory %s was modified.\n", event->name );
+		          	if(event->mask & IN_ISDIR){
+		          	 	// printf("The directory %s was modified.\n", event->name );
+		          		printf("");
 		        	}
-							else{
-									printf("The file %s was IN_CLOSE_WRITE with WD %d\n", event->name, event->wd );
-									//std::cout << "inotify(): entrou Mutex \n";   
-									//pauseSync = c->cc->pauseSync;
-									//if(pauseSync == 1){
-									//	std::cout << "inotify(): pause = Mutex \n";   
-									//}else{
-									
-									// Checa se arquivo eh de sincronizacao
-									pthread_mutex_lock(&c->cc->syncFilesLock);
-									if(c->cc->syncFiles.find(event->name) == c->cc->syncFiles.end()) {
-										pthread_mutex_unlock(&c->cc->syncFilesLock);	
-										ClientSync_onCloseWrite(c,event->name);
-									}
-									pthread_mutex_unlock(&c->cc->syncFilesLock);
-									std::cout << "inotify(): saiu Mutex \n"; 
+					else{					
+							// Checa se arquivo eh de sincronizacao
+							pthread_mutex_lock(&c->cc->syncFilesLock);
+							if(c->cc->syncFiles.find(event->name) == c->cc->syncFiles.end()) {
+								pthread_mutex_unlock(&c->cc->syncFilesLock);	
+								ClientSync_onCloseWrite(c,event->name);
 							}
-							
-						}
-					}
 
-		      if( event->mask & IN_MOVED_FROM) {
+							pthread_mutex_unlock(&c->cc->syncFilesLock);
+					}
+							
+				}
+			}
+
+		    if(event->mask & IN_MOVED_FROM){
 		       	if(event->mask & IN_ISDIR){
-		         	printf("The directory %s was IN_MOVED_FROM.\n", event->name );
-		       	}
-		      	else{
-			        printf("The file %s was IN_MOVED_FROM with WD %d\n", event->name, event->wd );
+		         	printf("");
+		       	}else{
+			        printf("");
 		 				ClientSync_onDelete(c,event->name);
 				  	}
-		      }
+		    }
 
-		  	  if(event->mask & IN_MOVED_TO){
+		  	if(event->mask & IN_MOVED_TO){
 	         	if (event->mask & IN_ISDIR){
-	         		printf("The directory %s was IN_MOVED_TO.\n", event->name );
-	         	}
-	        	else{
-		          printf("The file %s was IN_MOVED_TO to %s\n", oldname, event->name );
-			        	ClientSync_onCloseWrite(c,event->name);
-						free(oldname);
-				  	}
+	         		printf("");
+	         	}else{
+		          	printf("");
+			        ClientSync_onCloseWrite(c,event->name);
+					free(oldname);
+				}
 	        }
 
-		      if(event->mask & IN_DELETE) {
-			      if (event->mask & IN_ISDIR){
-			          printf("The directory %s was IN_DELETE.\n", event->name );
-			      }
-			      else
-			          printf("The file %s was IN_DELETE with WD %d\n", event->name, event->wd );
-			        	ClientSync_onDelete(c,event->name);
-		      }
+		    if(event->mask & IN_DELETE) {
+			    if (event->mask & IN_ISDIR){
+			        printf("");
+			    }else{
+			        // printf("The file %s was IN_DELETE with WD %d\n", event->name, event->wd );
+			        ClientSync_onDelete(c,event->name);
+			    }
+		    }
 
-		      i += EVENT_SIZE + event->len;
-	      }
+		    i += EVENT_SIZE + event->len;
 	    }
+	}
 	  
 
 	inotify_rm_watch(fd, wd);
 	close(fd);
 
-	std::cout << "ClientSync_watch() thread END\n";
+	// std::cout << "ClientSync_watch() thread END\n";
 }
 
 void ClientSync_sync(ClientSync *cs) {
@@ -192,11 +184,7 @@ void ClientSync_sync(ClientSync *cs) {
 		if(msg->type == END_SYNC){
 			break;
 		}
-		std::cout<<"ClientSync_sync(): type: " << msg->type << "\n";
-		std::cout<<"ClientSync_sync(): dentro\n";
 	}
-
-	std::cout<<"ClientSync_sync(): fora\n";
 	return;
 
 }
@@ -208,8 +196,6 @@ void ClientSync_onCloseWrite(ClientSync *cs, char *name) {
 	path.append("/").append(name);
 	
 	Message *msg = Message_create(FILE_CLOSE_WRITE,0,cs->cc->username,(const char *)name);
-
-	std::cout<<"ClientSync_onCloseWrite(): file: "<<path << "\n";
 
 	// Envia Requisição
 	Message_send(msg,cs->cc->sendsockfd);
@@ -223,8 +209,6 @@ void ClientSync_onCloseWrite(ClientSync *cs, char *name) {
 }
 
 void ClientSync_onDelete(ClientSync *cs, char *name) {
-	std::cout<<"ClientSync_onDelete(): Delete File " << name << "\n";
-
 	std::string path(cs->sync_dir);
 	path.append("/").append(name);
 	

@@ -9,21 +9,21 @@
 #include "../../include/server/ServerProcessor.h"
 
 void ServerCommunicator_init(ServerCommunicator *sc, unsigned int port, unsigned int backlog) {
-	std::cout << "ServerCommunicator_init(): START\n";
+	// std::cout << "ServerCommunicator_init(): START\n";
 	sc->port = port;
 	sc->backlog = backlog;
 	sc->connectionId = 0;
 
 	int sockfd;
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-    	std::cout << "ServerCommunicator_init(): ERROR opening socket\n";
+    	std::cerr << "ServerCommunicator_init(): ERROR opening socket\n";
     	exit(-1);
 	}
 	sc->sockfd = sockfd;
 
 	int enable = 1;
 	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
-	    std::cout << "ServerCommunicator_init(): setsockopt(SO_REUSEADDR) failed\n";
+	    std::cerr << "ServerCommunicator_init(): setsockopt(SO_REUSEADDR) failed\n";
 	    exit(-1);
 	}
 
@@ -34,7 +34,7 @@ void ServerCommunicator_init(ServerCommunicator *sc, unsigned int port, unsigned
 	bzero(&(serv_addr.sin_zero), 8);
 
 	if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-		std::cout << "ServerCommunicator_init(): ERROR on binding\n";
+		std::cerr << "ServerCommunicator_init(): ERROR on binding\n";
 		exit(-1);
 	}
 
@@ -46,14 +46,14 @@ void ServerCommunicator_init(ServerCommunicator *sc, unsigned int port, unsigned
 	pthread_mutex_init(&sc->userSessionsLock, NULL);
 	pthread_mutex_init(&sc->sendQueueLock, NULL);
 
-	std::cout << "ServerCommunicator_init(): bind OK\n";
-	std::cout << "ServerCommunicator_init(): END\n";
+	// std::cout << "ServerCommunicator_init(): bind OK\n";
+	// std::cout << "ServerCommunicator_init(): END\n";
 }
 
 void ServerCommunicator_start(ServerCommunicator *sc) {
-	std::cout << "ServerCommunicator_start(): START\n";
+	// std::cout << "ServerCommunicator_start(): START\n";
 	pthread_create(&sc->listenThread,0,ServerCommunicator_listen,(void*)sc);
-	std::cout << "ServerCommunicator_start(): listenThread created\n";
+	// std::cout << "ServerCommunicator_start(): listenThread created\n";
 	pthread_join(sc->listenThread,NULL);
 }
 
@@ -74,7 +74,7 @@ void* ServerCommunicator_listen(void* sc) {
 		pthread_t *acceptThread = (pthread_t *)malloc(sizeof(pthread_t));
 		
 		if ((*newsockfd = accept(s->sockfd, connection, &clilen)) == -1) {
-			std::cout << "ServerCommunicator_listen(): ERROR on accept\n";
+			std::cerr << "ServerCommunicator_listen(): ERROR on accept\n";
 		}
 		else {
 			
@@ -84,7 +84,7 @@ void* ServerCommunicator_listen(void* sc) {
 			s->acceptedThreads.insert(std::pair<pthread_t,int>(*acceptThread,*newsockfd));
 			pthread_mutex_unlock(&s->acceptedThreadsLock);
 
-			std::cout << "ServerCommunicator_listen(): acceptThread " << *acceptThread << " fd " << *newsockfd << " created\n";
+			// std::cout << "ServerCommunicator_listen(): acceptThread " << *acceptThread << " fd " << *newsockfd << " created\n";
 
 		}
 	
@@ -129,7 +129,7 @@ void* ServerCommunicator_accept(void* sc) {
 					// Limite de sessoes excedido
 					msg->type = NOK;
 					Message_send(msg,sockfd);
-					std::cout<<"ServerCommunicator_accept(): SESSIONS LIMIT EXCEEDED\n";
+					std::cerr<<"ServerCommunicator_accept(): SESSIONS LIMIT EXCEEDED\n";
 				}
 			}
 					
@@ -188,10 +188,15 @@ void ServerCommunicator_receive(ServerCommunicator *sc, int sockfd) {
 	
 	Message *msg = (Message*)malloc(sizeof(Message));
 	while(Message_recv(msg,sockfd) != -1) {
+
+		if(msg->type == OK){
+			pthread_exit(NULL);
+		}
+
 		ServerProcessor_dispatch(sc,msg);
 	}
 
-	ServerProcessor_exit(sc,msg);
+	ServerProcessor_exitCommand(sc,msg);
 
 	free(msg);
 	// std::cout << "ServerCommunicator_receive(): END " << sockfd << "\n"; 
@@ -209,14 +214,14 @@ void ServerCommunicator_send(ServerCommunicator *sc, int sockfd, int connectionI
 			
 			Message *msg = sc->sendQueue.at(connectionId).front();
 
-			std::cout << "\n\n\n";
-			std::cout << "Quantidade da fila: " << sc->sendQueue.at(connectionId).size() << "\n";
-			std::cout << "Retirando msg da fila e enviando " << sockfd << "\n";
-			std::cout << "\n\n\n";
+			// std::cout << "\n\n\n";
+			// std::cout << "Quantidade da fila: " << sc->sendQueue.at(connectionId).size() << "\n";
+			// std::cout << "Retirando msg da fila e enviando " << sockfd << "\n";
+			// std::cout << "\n\n\n";
 
 			if(Message_send(msg, sockfd) == -1){
 				std::cerr << "ServerCommunicator_send() Error send msg!\n";
-				ServerProcessor_exit(sc,msg);
+				ServerProcessor_exitCommand(sc,msg);
 				return;
 			}
 			free(msg);

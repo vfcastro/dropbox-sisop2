@@ -7,6 +7,7 @@
 #include <string>
 #include <string.h>
 #include "../../include/client/ClientInterface.h"
+#include "../../include/common/FileManager.h"
 
 void ClientInterface_start(ClientCommunicator *cc) {
 	// std::cout << "ClientInterface_start(): START\n";
@@ -14,7 +15,14 @@ void ClientInterface_start(ClientCommunicator *cc) {
 	std::string command;
 
 	while(!exit){
-		std::cout << "# ";
+		std::cout<< "Commands Available:"<<std::endl;
+		std::cout<< "\tupload [filepath]"<<std::endl;
+		std::cout<< "\tdownload [filepath]"<<std::endl;
+		std::cout<< "\tdelete [filepath]"<<std::endl;
+		std::cout<< "\tlist_server"<<std::endl;
+		std::cout<< "\tlist_client"<<std::endl;
+		std::cout<< "\texit"<<std::endl;
+		std::cout << "#: ";
 		std::getline(std::cin,command);
 		if(!command.empty())
 			ClientInterface_command(command, &exit, cc);
@@ -34,7 +42,7 @@ void ClientInterface_command(std::string command, bool* exit, ClientCommunicator
 
 	if(cmdAndArg[0].compare("upload")==0){
 		if(cmdAndArg.size()>1){
-			std::cout<<cmdAndArg[0]<<" "<<cmdAndArg[1]<<" called"<<std::endl;
+			// std::cout<<cmdAndArg[0]<<" "<<cmdAndArg[1]<<" called"<<std::endl;
 			ClientInterface_upload(cc, cmdAndArg[1]);
 		}
 		else{
@@ -44,7 +52,7 @@ void ClientInterface_command(std::string command, bool* exit, ClientCommunicator
 	}
 	else if(cmdAndArg[0].compare("download")==0){
 		if(cmdAndArg.size()>1){
-			std::cout<<cmdAndArg[0]<<" "<<cmdAndArg[1]<<" called"<<std::endl;
+			// std::cout<<cmdAndArg[0]<<" "<<cmdAndArg[1]<<" called"<<std::endl;
 			ClientInterface_download(cc, cmdAndArg[1]);
 		}
 		else{
@@ -53,7 +61,7 @@ void ClientInterface_command(std::string command, bool* exit, ClientCommunicator
 	}
 	else if(cmdAndArg[0].compare("delete")==0){
 		if(cmdAndArg.size()>1){
-			std::cout<<cmdAndArg[0]<<" "<<cmdAndArg[1]<<" called"<<std::endl;
+			// std::cout<<cmdAndArg[0]<<" "<<cmdAndArg[1]<<" called"<<std::endl;
 			ClientInterface_delete(cc, cmdAndArg[1]);
 		}
 		else{
@@ -61,16 +69,21 @@ void ClientInterface_command(std::string command, bool* exit, ClientCommunicator
 		}
 	}
 	else if(cmdAndArg[0].compare("list_server")==0){
-		std::cout<<"list_server called"<<std::endl;
+		// std::cout<<"list_server called"<<std::endl;
 		ClientInterface_listServer(cc);
 	}
 	else if(cmdAndArg[0].compare("list_client")==0){
-		std::cout<<"list_client called"<<std::endl;
+		// std::cout<<"list_client called"<<std::endl;
 		ClientInterface_listClient(cc);
+	}
+	else if(cmdAndArg[0].compare("get_sync_dir")==0){
+		// std::cout<<"list_client called"<<std::endl;
+		ClientInterface_getSyncDir(cc);
 	}
 	else if(cmdAndArg[0].compare("exit")==0){
 		*exit=true;
-		std::cout<<"exiting"<<std::endl;
+		std::cout<<"Closing..."<<std::endl;
+		ClientInterface_exit(cc);
 	}
 	else if(cmdAndArg[0].compare("help")==0){
 		std::cout<< "Commands Available:"<<std::endl;
@@ -87,8 +100,7 @@ void ClientInterface_command(std::string command, bool* exit, ClientCommunicator
 }
 
 void ClientInterface_upload(ClientCommunicator *cc, std::string filepath){
-	std::cout << "ClientInterface_upload(): START for " << filepath << std::endl;
-
+	// std::cout << "ClientInterface_upload(): START for " << filepath << std::endl;
 
 	std::vector<std::string> filename_v;
 	std::istringstream fs(filepath);
@@ -106,7 +118,7 @@ void ClientInterface_upload(ClientCommunicator *cc, std::string filepath){
 
 	// Aguarda um Ok do server
 	if(Message_recv(msg, cc->sendsockfd) == -1){
-		std::cout << "ClientInterface_upload(): ERROR recv -1 ";
+		std::cerr << "ClientInterface_upload(): ERROR recv -1 ";
 	}
 
 	int f;
@@ -120,7 +132,7 @@ void ClientInterface_upload(ClientCommunicator *cc, std::string filepath){
 	
 	// Envia arquivo pro servidor
 	while(bytes_recv){
-		std::cout << "ClientSync_onCloseWrite(): read " << bytes_recv << " bytes from file " << filepath << "\n";
+		// std::cout << "ClientSync_onCloseWrite(): read " << bytes_recv << " bytes from file " << filepath << "\n";
 		msg->seqn = bytes_recv;
 		Message_send(msg, cc->sendsockfd);
 		bytes_recv = read(f, msg->payload, MAX_PAYLOAD_SIZE);
@@ -131,11 +143,11 @@ void ClientInterface_upload(ClientCommunicator *cc, std::string filepath){
 
 	close(f);
 
-	std::cout << "ClientInterface_upload(): END for " << filepath << std::endl;
+	// std::cout << "ClientInterface_upload(): END for " << filepath << std::endl;
 }
 
 void ClientInterface_download(ClientCommunicator *cc, std::string filename){
-	std::cout << "ClientInterface_download(): " << filename << std::endl;
+	// std::cout << "ClientInterface_download(): " << filename << std::endl;
 
 	Message *msg = Message_create(DOWNLOAD_FILE_CMD, 0, cc->username, (const char *)filename.c_str());
 	// Envia msg dizendo que quer fazer download
@@ -143,10 +155,10 @@ void ClientInterface_download(ClientCommunicator *cc, std::string filename){
 
 	// Aguarda um Ok do server
 	if(Message_recv(msg, cc->sendsockfd) == -1){
-		std::cout << "ClientInterface_download(): ERROR recv -1 ";
+		std::cerr << "ClientInterface_download(): ERROR recv -1 ";
 	}
 
-	std::cout << "ClientInterface_download(): creating file " << filename << "\n";
+	// std::cout << "ClientInterface_download(): creating file " << filename << "\n";
 
 	int f = open((char*)filename.c_str(),O_CREAT|O_WRONLY,0600);
 	
@@ -162,7 +174,7 @@ void ClientInterface_download(ClientCommunicator *cc, std::string filename){
 			break;
 		}
 
-		std::cout << "ClientInterface_download(): recv payload with " << msg->seqn << " bytes\n";
+		// std::cout << "ClientInterface_download(): recv payload with " << msg->seqn << " bytes\n";
 		
 		if(write(f,(const void *)msg->payload, msg->seqn) == -1){
 			exit(6);
@@ -177,7 +189,7 @@ void ClientInterface_download(ClientCommunicator *cc, std::string filename){
 }
 
 void ClientInterface_delete(ClientCommunicator *cc, std::string filename){
-	std::cout<<"ClientInterface_delete(): Delete File " << filename << "\n";
+	// std::cout<<"ClientInterface_delete(): Delete File " << filename << "\n";
 
 	std::string path("./sync_dir_");
 	path.append(cc->username).append("/");
@@ -192,7 +204,7 @@ void ClientInterface_delete(ClientCommunicator *cc, std::string filename){
 }
 
 void ClientInterface_listServer(ClientCommunicator *cc){
-	std::cout << "ClientInterface_listServer(): START";
+	// std::cout << "ClientInterface_listServer(): START";
 	std::vector<std::string> list_files;
 
 	Message *msg = Message_create(LIST_SERVER_CMD, 0, cc->username, "");
@@ -212,20 +224,21 @@ void ClientInterface_listServer(ClientCommunicator *cc){
 		}
 
 		// adiciona cada linha num vetor
-		std::cout << "Recebendo: " << msg->payload;
+		// std::cout << "Recebendo: " << msg->payload;
 		list_files.push_back(msg->payload);
 	}
 
 
-	std::cout << "List Server result: " << "\n";
+	std::cout << "\n\nList Server result: " << "\n";
 	// imprime as linhas do "ls -l" na tela do cliente
 	for (int i = 0; i < list_files.size(); ++i){
 		std::cout << list_files[i] << "\n";
 	}
+	std::cout << "\n\n";
 }
 
 void ClientInterface_listClient(ClientCommunicator *cc){
-	std::cout << "ClientInterface_listClient: START\n\n";
+	// std::cout << "ClientInterface_listClient: START\n\n";
 	
 	std::string path("./sync_dir_");
 	path.append(cc->username).append("/");
@@ -249,7 +262,7 @@ void ClientInterface_listClient(ClientCommunicator *cc){
 
 	FILE *fp;
 	
-	std::cout << "List Client result: " << "\n";
+	std::cout << "\n\nList Client result: " << "\n";
 
 	for (int i = 0; i < filelist.size(); ++i){
 		std::string cmd("stat --printf='M: %y | A: %x | C: %w ' ");
@@ -262,7 +275,7 @@ void ClientInterface_listClient(ClientCommunicator *cc){
 
 		fp = popen(cmd.c_str(), "r");
 		if (fp == NULL) {
-			printf("Failed to run command\n" );
+			std::cerr << "Failed to run command \n";
 			exit(1);
 	  	}
 
@@ -274,11 +287,54 @@ void ClientInterface_listClient(ClientCommunicator *cc){
 	  	/* close */
 	  	pclose(fp);
   	}
+  	std::cout << "\n\n";
 }
 
 void ClientInterface_exit(ClientCommunicator *cc){
-	std::cout << "ClientInterface_exit(): START";
+	// std::cout << "ClientInterface_exit(): START";
 	Message *msg = Message_create(USER_EXIT, 0, cc->username, "");
 	Message_send(msg,cc->sendsockfd);
 	exit(0);
+}
+
+void ClientInterface_getSyncDir(ClientCommunicator *cc){
+std::cout << "GET_SYNC_DIR: Sincronizando arquivos....\n";
+	int socket = cc->sendsockfd;
+
+	Message *msg = Message_create(GET_SYNC_DIR, 0, cc->username, std::string().c_str());
+
+	// Envia Requisição
+	Message_send(msg, socket);
+
+	// Aguarda Ok ou aviso que nao ha arquivos
+	Message_recv(msg, socket);
+	if(msg->type == NOK){
+		return;
+	}
+
+	int receive_result = 0;
+	int type = 0;
+	// Recebe nome do arquivo
+
+	while(Message_recv(msg, socket) != -1){
+
+		type = msg->type;
+
+		std::string path("./sync_dir_");
+		path.append(cc->username).append("/");
+		path.append(msg->payload);
+
+		receive_result = FileManager_receiveFile(path, msg, cc->sendsockfd);
+
+		if(receive_result == -1){
+			std::cout<<"ClientInterface_getSyncDir(): Error Send File\n";
+			break;
+		}
+
+		Message_recv(msg, socket);
+		if(msg->type == END_SYNC){
+			break;
+		}
+	}
+	return;
 }

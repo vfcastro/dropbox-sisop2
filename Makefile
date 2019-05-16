@@ -13,6 +13,11 @@ server:
 
 client:
 	g++ -g $(CLIENT_SCR)*.cpp $(BUILD_DIR)*.o -o $(BIN_DIR)client -lpthread -std=c++11
+	@echo ''
+	@echo ''
+	@echo 'Usage:'
+	@echo './bin/./server <port>'
+	@echo './bin/./client <username> <ip_address> <port>'
 
 common:
 	mkdir -p $(BUILD_DIR)
@@ -29,3 +34,4 @@ test:
 
 clean:
 	rm -rf $(BIN_DIR)* $(BUILD_DIR) $(TEST_DIR)
+	clear

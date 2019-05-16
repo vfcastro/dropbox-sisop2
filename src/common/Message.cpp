@@ -15,7 +15,7 @@ Message* Message_create(unsigned int type, unsigned int seqn, const char *userna
 	memcpy((void*)msg->username,(void*)username,MAX_USERNAME_SIZE);
 	memcpy((void*)msg->payload,(void*)payload,MAX_PAYLOAD_SIZE);
 
-	std::cout << "Message_create(): type:" << msg->type << " seqn:" << msg->seqn << " username:" << msg->username << " payload:" << msg->payload <<"\n";
+	// std::cout << "Message_create(): type:" << msg->type << " seqn:" << msg->seqn << " username:" << msg->username << " payload:" << msg->payload <<"\n";
 	return msg;
 }
 
@@ -70,11 +70,11 @@ int Message_send(Message *msg, int sockfd) {
         return -1;
     }
 
-    std::cout << "\n\n\nMensagem Enviada on fd " << sockfd << "\n";
-    std::cout << "msg.type: " << msg->type << "\n";
-    std::cout << "msg.seqn: " << msg->seqn << "\n";
-    std::cout << "msg.username: " << msg->username << "\n";
-    std::cout << "msg.payload: " << msg->payload << "\n\n\n";
+    // std::cout << "\n\n\nMensagem Enviada on fd " << sockfd << "\n";
+    // std::cout << "msg.type: " << msg->type << "\n";
+    // std::cout << "msg.seqn: " << msg->seqn << "\n";
+    // std::cout << "msg.username: " << msg->username << "\n";
+    // std::cout << "msg.payload: " << msg->payload << "\n\n\n";
 
     //free(buffer);
     // std::cout << "Message_send(): END on fd " << sockfd << "\n";
@@ -93,11 +93,11 @@ int Message_recv(Message *msg, int sockfd) {
     }
     Message_unmarshall(msg,buffer);
         
-    std::cout << "\n\n\nMensagem Recebida on fd " << sockfd << "\n";
-    std::cout << "msg.type: " << msg->type << "\n";
-    std::cout << "msg.seqn: " << msg->seqn << "\n";
-    std::cout << "msg.username: " << msg->username << "\n";
-    std::cout << "msg.payload: " << msg->payload << "\n";
+    // std::cout << "\n\n\nMensagem Recebida on fd " << sockfd << "\n";
+    // std::cout << "msg.type: " << msg->type << "\n";
+    // std::cout << "msg.seqn: " << msg->seqn << "\n";
+    // std::cout << "msg.username: " << msg->username << "\n";
+    // std::cout << "msg.payload: " << msg->payload << "\n";
 
 	//free(buffer);
     // std::cout << "Message_recv(): END on fd " << sockfd << "\n";

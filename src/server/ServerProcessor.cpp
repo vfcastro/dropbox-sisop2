@@ -42,12 +42,16 @@ void ServerProcessor_dispatch(ServerCommunicator *sc, Message *msg) {
 		break;
 
 		case USER_EXIT:
-			ServerProcessor_exit(sc,msg);
+			ServerProcessor_exitCommand(sc,msg);
 		break;
 
+		case OK:
+			std:cout << "";
+		break;
+		
 		default:
-			std::cout<<"ERROR MSG TYPE INVALID"<<std::endl;
-			break;
+			std::cout<<"ERROR MSG TYPE INVALID: " << msg->type << "\n";
+		break;
 
 	}
 
@@ -55,7 +59,7 @@ void ServerProcessor_dispatch(ServerCommunicator *sc, Message *msg) {
 }
 
 void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
-	std::cout << "ServerProcessor_openSession(): recv OPEN_SESSION from client " << msg->username << "\n";
+	// std::cout << "ServerProcessor_openSession(): recv OPEN_SESSION from client " << msg->username << "\n";
 	
 	pthread_mutex_lock(&sc->acceptedThreadsLock);	
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
@@ -66,8 +70,10 @@ void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
 	//Se não houve, criar
 	std::string sync_dir(SYNC_DIR_BASE_NAME);
 	sync_dir.append(msg->username);
+	std::cerr<<"New Session for: " << msg->username << "\n";
+
 	if(FileManager_createDir((char*)sync_dir.c_str()) == -1) {
-		std::cout<<"ServerProcessor_openSession(): ERROR creating user dir " << sync_dir << "\n";
+		std::cerr<<"ServerProcessor_openSession(): ERROR creating user dir " << sync_dir << "\n";
 		msg->type = NOK;
 		Message_send(msg,sockfd);
 		return;
@@ -79,11 +85,11 @@ void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
 		return;
 	}
 
-	std::cout << "ServerProcessor_openSession(): sent OK for OPEN_SESSION to client " << msg->username << "\n";
+	// std::cout << "ServerProcessor_openSession(): sent OK for OPEN_SESSION to client " << msg->username << "\n";
 }
 
 void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
-	std::cout << "ServerProcessor_onCloseWrite(): recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
+	// std::cout << "ServerProcessor_onCloseWrite(): recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
 
 	pthread_mutex_lock(&sc->acceptedThreadsLock);
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
@@ -102,7 +108,7 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	std::string path(sync_dir);
 	path.append("/").append(msg->payload);
 	std::string filename(msg->payload);
-	std::cout << "ServerProcessor_onCloseWrite(): creating file " << path << "\n";
+	// std::cout << "ServerProcessor_onCloseWrite(): creating file " << path << "\n";
 
 	// Envia um OK para o cliente
 	msg->type = OK;
@@ -110,13 +116,13 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	
 	// Começa o recebimento do arquivo
 	if(FileManager_receiveFile(path, msg, sockfd) == -1){
-		std::cout<<"ServerProcessor_onCloseWrite(): Error Receive File\n";
+		std::cerr<<"ServerProcessor_onCloseWrite(): Error Receive File\n";
 	}
 
 	// Propaga o arquivo para o restante dos dispositivos
 	ServerProcessor_propagateFiles(sc, connectionId, msg, filename, 1);
 
-	std::cout << "ServerProcessor_onCloseWrite(): END recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
+	// std::cout << "ServerProcessor_onCloseWrite(): END recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
 }
 
 // Mode = 0: todos usuarios
@@ -135,7 +141,6 @@ void ServerProcessor_propagateFiles(ServerCommunicator *sc, int connectionId, Me
 	}else{
 		// Se existir dois dispositivos do mesmo usuario
 		if(mode == 0){
-				std::cout<<"propagada pra todos\n";
 				
 				// Propaga pra todos
 				FileManager_sendFile2Queue(sc, filename, msg, connection_ids.first);
@@ -143,20 +148,15 @@ void ServerProcessor_propagateFiles(ServerCommunicator *sc, int connectionId, Me
 
 		}else if(mode == 1){
 			if(connection_ids.first == connectionId){
-				// std::cout<<"#####################################\n";
 
 				connectionId_toSend = connection_ids.second;
-				// std::cout<<"MEU ID: " << connectionId << "ID ENVIO: " << connectionId_toSend << "\n";
 
 			}else if(connection_ids.second == connectionId){
-				// std::cout<<"#####################################\n";
 
 				connectionId_toSend = connection_ids.first;
-				// std::cout<<"MEU ID: " << connectionId << "ID ENVIO: " << connectionId_toSend << "\n";
 			}
 
 			// Propagada pra connectionId_toSend
-			// std::cout<<"propagada pra " << connectionId_toSend << "\n";
 			FileManager_sendFile2Queue(sc, filename, msg, connectionId_toSend);
 		}
 	}
@@ -164,9 +164,7 @@ void ServerProcessor_propagateFiles(ServerCommunicator *sc, int connectionId, Me
 
 void ServerProcessor_propagateDelete(ServerCommunicator *sc, int connectionId, Message *msg, std::string filename){
 	std::pair<int,int> connection_ids;
-	
-	std::cout << "PROPAGANDO DELETE " << msg->username << "\n";
-	
+		
 	pthread_mutex_lock(&sc->userSessionsLock);
 	connection_ids = sc->userSessions.find(msg->username)->second;
 	pthread_mutex_unlock(&sc->userSessionsLock);
@@ -196,7 +194,7 @@ void ServerProcessor_propagateDelete(ServerCommunicator *sc, int connectionId, M
 }
 
 void ServerProcessor_uploadCommand(ServerCommunicator *sc, Message *msg){
-	std::cout << "ServerProcessor_uploadCommand(): recv UPLOAD_FILE_CMD from client " << msg->username << "\n";
+	// std::cout << "ServerProcessor_uploadCommand(): recv UPLOAD_FILE_CMD from client " << msg->username << "\n";
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
 	
 	std::string path("./sync_dir_");
@@ -204,7 +202,7 @@ void ServerProcessor_uploadCommand(ServerCommunicator *sc, Message *msg){
 
 	path.append(msg->payload);
 	std::string filename(msg->payload);
-	std::cout << "ServerProcessor_uploadCommand(): creating file " << path << "\n";
+	// std::cout << "ServerProcessor_uploadCommand(): creating file " << path << "\n";
 
 	int f = open((char*)path.c_str(),O_CREAT|O_WRONLY,0600);
 	
@@ -223,7 +221,7 @@ void ServerProcessor_uploadCommand(ServerCommunicator *sc, Message *msg){
 			break;
 		}
 
-		std::cout << "ServerProcessor_uploadCommand(): recv payload with " << msg->seqn << " bytes\n";
+		// std::cout << "ServerProcessor_uploadCommand(): recv payload with " << msg->seqn << " bytes\n";
 		
 		if(write(f,(const void *)msg->payload, msg->seqn) == -1){
 			exit(6);
@@ -241,11 +239,11 @@ void ServerProcessor_uploadCommand(ServerCommunicator *sc, Message *msg){
 
 	close(f);
 
-	std::cout << "ServerProcessor_uploadCommand(): END recv UPLOAD_FILE_CMD from client " << msg->username << "\n";
+	// std::cout << "ServerProcessor_uploadCommand(): END recv UPLOAD_FILE_CMD from client " << msg->username << "\n";
 }
 
 void ServerProcessor_downloadCommand(ServerCommunicator *sc, Message *msg) {
-	std::cout << "ServerProcessor_downloadCommand(): recv DOWNLOAD_FILE_CMD from client " << msg->username << "\n";
+	// std::cout << "ServerProcessor_downloadCommand(): recv DOWNLOAD_FILE_CMD from client " << msg->username << "\n";
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
 	
 	std::string path("./sync_dir_");
@@ -268,7 +266,7 @@ void ServerProcessor_downloadCommand(ServerCommunicator *sc, Message *msg) {
 	
 	// Envia arquivo pro cliente
 	while(bytes_recv){
-		std::cout << "ServerProcessor_downloadCommand(): read " << bytes_recv << " bytes from file " << path << "\n";
+		// std::cout << "ServerProcessor_downloadCommand(): read " << bytes_recv << " bytes from file " << path << "\n";
 		msg->seqn = bytes_recv;
 		Message_send(msg, sockfd);
 		bytes_recv = read(f, msg->payload, MAX_PAYLOAD_SIZE);
@@ -279,11 +277,11 @@ void ServerProcessor_downloadCommand(ServerCommunicator *sc, Message *msg) {
 
 	close(f);
 
-	std::cout << "ServerProcessor_downloadCommand(): END recv DOWNLOAD_FILE_CMD from client " << msg->username << "\n";
+	// std::cout << "ServerProcessor_downloadCommand(): END recv DOWNLOAD_FILE_CMD from client " << msg->username << "\n";
 }
 
 void ServerProcessor_onDelete(ServerCommunicator *sc, Message *msg){
-	std::cout << "ServerProcessor_onDelete(): recv DELETE_FILE from client " << msg->username << "\n";
+	// std::cout << "ServerProcessor_onDelete(): recv DELETE_FILE from client " << msg->username << "\n";
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
 
 	std::string path("./sync_dir_");
@@ -293,18 +291,11 @@ void ServerProcessor_onDelete(ServerCommunicator *sc, Message *msg){
 
 	std::string filename(msg->payload);
 
-	std::cout << "ServerProcessor_onDelete(): removing file " << path << "\n";
+	// std::cout << "ServerProcessor_onDelete(): removing file " << path << "\n";
 
 	const char *c = path.c_str();
 
     int Removed=std::remove(c);
-
-	if(Removed==0){
-		std::cout<<"File "<<path <<"removed from "<<msg->username<<"'s"<<" sync_dir"<<std::endl;
-	}
-	else{
-		std::cout<<"File "<<path <<"wasn't inside "<<msg->username<<"'s"<<" sync_dir"<<std::endl;
-	}
 
 	msg->type = OK;
 	Message_send(msg,sockfd);
@@ -315,16 +306,16 @@ void ServerProcessor_onDelete(ServerCommunicator *sc, Message *msg){
 	pthread_mutex_unlock(&sc->connectionIdLock);
 	
 	ServerProcessor_propagateDelete(sc, connectionId, msg, filename);
-	std::cout << "ServerProcessor_onDelete(): END recv DELETE_FILE from client " << msg->username << "\n";
+	// std::cout << "ServerProcessor_onDelete(): END recv DELETE_FILE from client " << msg->username << "\n";
 
 }
 
 void ServerProcessor_deleteCommand(ServerCommunicator *sc, Message *msg){
-	std::cout << "ServerProcessor_deleteCommand(): START";
+	return;
 }
 
 void ServerProcessor_listServerCommand(ServerCommunicator *sc, Message *msg){
-	std::cout << "ServerProcessor_listServerCommand(): START";
+	// std::cout << "ServerProcessor_listServerCommand(): START";
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
 	
 	std::string path("./sync_dir_");
@@ -383,12 +374,8 @@ void ServerProcessor_listServerCommand(ServerCommunicator *sc, Message *msg){
 	Message_send(msg, sockfd);
 }
 
-void ServerProcessor_exitCommand(ServerCommunicator *sc, Message *msg){
-	std::cout << "ServerProcessor_exitCommand(): START";
-}
-
 void ServerProcessor_getSync(ServerCommunicator *sc, Message *msg){
-	std::cout << "ServerProcessor_getSync(): recv GET_SYNC_DIR from client " << msg->username << "\n";
+	// std::cout << "ServerProcessor_getSync(): recv GET_SYNC_DIR from client " << msg->username << "\n";
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
 	
 	std::string path("./sync_dir_");
@@ -423,8 +410,6 @@ void ServerProcessor_getSync(ServerCommunicator *sc, Message *msg){
 		for (int i = 0; i < filelist.size(); i++){
 			std::string path2(path);
 			path2.append(filelist[i]);
-
-			std::cout << path2 << "\n";
 			
 			if(i == filelist.size()){
 				msg->type = END;
@@ -453,8 +438,8 @@ void ServerProcessor_getSync(ServerCommunicator *sc, Message *msg){
 
 }
 
-void ServerProcessor_exit(ServerCommunicator *sc, Message *msg){
-	std::cout << "user "<<msg->username<<" exited.\n";
+void ServerProcessor_exitCommand(ServerCommunicator *sc, Message *msg){
+	std::cout << "Session closed: " << msg->username << "\n";
 /*	std::pair<int,int> connection_ids;
 	
 	pthread_mutex_lock(&sc->userSessionsLock);

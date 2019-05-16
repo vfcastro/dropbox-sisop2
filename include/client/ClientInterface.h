@@ -10,3 +10,4 @@ void ClientInterface_delete(ClientCommunicator *cc, std::string filename);
 void ClientInterface_listServer(ClientCommunicator *cc);
 void ClientInterface_listClient(ClientCommunicator *cc);
 void ClientInterface_exit(ClientCommunicator *cc);
+void ClientInterface_getSyncDir(ClientCommunicator *cc);

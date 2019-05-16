@@ -31,7 +31,7 @@ void ClientProcessor_dispatch(ClientCommunicator *cc, Message *msg) {
 }
 
 void ClientProcessor_onCloseWrite(ClientCommunicator *cc, Message *msg) {
-	std::cout << "ClientProcessor_onCloseWrite(): recv FILE_CLOSE_WRITE from server " << msg->username << "\n";
+	// std::cout << "ClientProcessor_onCloseWrite(): recv FILE_CLOSE_WRITE from server " << msg->username << "\n";
 
 	//primeira msg contem o nome do arquivo, cria caso necessario
 	std::string path("./sync_dir_");
@@ -40,7 +40,6 @@ void ClientProcessor_onCloseWrite(ClientCommunicator *cc, Message *msg) {
 
 	path.append(msg->payload);
 
-	std::cout << "ClientProcessor_onCloseWrite(): creating file " << path << "\n";
 
 	int f = open((char*)path.c_str(),O_CREAT|O_WRONLY,0600);
 
@@ -58,7 +57,7 @@ void ClientProcessor_onCloseWrite(ClientCommunicator *cc, Message *msg) {
 	        break;
 	    }
 
-	    std::cout << "ClientProcessor_onCloseWrite(): recv payload with " << msg->seqn << " bytes\n";
+	    // std::cout << "ClientProcessor_onCloseWrite(): recv payload with " << msg->seqn << " bytes\n";
 
 	    if(write(f,(const void *)msg->payload, msg->seqn) == -1){
 	        exit(6);
@@ -66,8 +65,7 @@ void ClientProcessor_onCloseWrite(ClientCommunicator *cc, Message *msg) {
 
 	}
 
-	std::cout << "ClientProcessor_onCloseWrite(): END recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
-
+	
 }
 
 void ClientProcessor_receivePropagate(ClientCommunicator *cc, Message *msg) {
@@ -75,35 +73,24 @@ void ClientProcessor_receivePropagate(ClientCommunicator *cc, Message *msg) {
 
    	std::string path("./sync_dir_");
    	path.append(cc->username).append("/");
-   	path.append("/").append(msg->payload);
+   	path.append(msg->payload);
    	std::cout << "Recebendo arquivo: " << path << "\n"; 
 
-
    	pthread_mutex_lock(&cc->syncFilesLock);
-   	std::cout << "ClientProcessor_receivePropagate(): entrou Mutex \n";
-   	//cc->pauseSync = 1;
 
 	//Adiciona filename na lista de sicronizacao
 	cc->syncFiles.insert(msg->payload);
 
    	// Começa o recebimento do arquivo
    	if(FileManager_receiveFile(path, msg, cc->recvsockfd) == -1){
-      std::cout<<"ClientProcessor_receivePropagate(): Error Receive File\n";
+      	std::cerr<<"ClientProcessor_receivePropagate(): Error Receive File\n";
    	}
-   	std::cout<<"========================== ESPERANDO INICIO\n";
-   	std::cout<<"========================== ESPERANDO FIM\n";
-   	//cc->pauseSync = 0;
 
 	//Remove filename na lista de sync
 	cc->syncFiles.erase(msg->payload);
 
-   	std::cout << "ClientProcessor_receivePropagate(): desativou Mutex \n";
    	pthread_mutex_unlock(&cc->syncFilesLock);
-   	std::cout << "ClientProcessor_receivePropagate(): saiu Mutex \n";
-   
-
-   	std::cout << "ClientProcessor_receivePropagate(): END recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
-}
+  }
 
 void ClientProcessor_receiveDelete(ClientCommunicator *cc, Message *msg){
 	std::string path("./sync_dir_");
@@ -113,7 +100,7 @@ void ClientProcessor_receiveDelete(ClientCommunicator *cc, Message *msg){
    	pthread_mutex_lock(&cc->syncFilesLock);
    	cc->syncFiles.insert(msg->payload);
 
-   	cout << path << "\n";
+   	// cout << path << "\n";
 
    	int Removed = std::remove(path.c_str());
 

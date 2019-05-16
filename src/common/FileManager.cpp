@@ -66,7 +66,7 @@ int FileManager_sendFile(std::string path, Message *msg, int socket){
 	int bytes_recv = read(f, msg->payload, MAX_PAYLOAD_SIZE);
 
 	while(bytes_recv){
-		std::cout << "FileManager_sendFile(): read " << bytes_recv << " bytes from file " << path << "\n";
+		// std::cout << "FileManager_sendFile(): read " << bytes_recv << " bytes from file " << path << "\n";
 		msg->seqn = bytes_recv;
 		Message_send(msg,socket);
 		bytes_recv = read(f, msg->payload, MAX_PAYLOAD_SIZE);
@@ -103,9 +103,7 @@ int FileManager_sendFile2Queue(ServerCommunicator *sc, std::string path, Message
 	int bytes_recv = read(f, msg_to_send->payload, MAX_PAYLOAD_SIZE);
 
 	while(bytes_recv){
-		// std::cout << "$$$$$$$$$$$$$$$$$$$$: " << msg_to_send->payload << "\n";
-
-		std::cout << "FileManager_sendFile(): read " << bytes_recv << " bytes from file " << full_path << "\n";
+		// std::cout << "FileManager_sendFile(): read " << bytes_recv << " bytes from file " << full_path << "\n";
 		msg_to_send->seqn = bytes_recv;
 
 		// std::cout<<"Enviando arquivos na fila | msg_to_send->type: " << msg_to_send->type << "\n";
