@@ -93,11 +93,11 @@ int Message_recv(Message *msg, int sockfd) {
     }
     Message_unmarshall(msg,buffer);
         
-    // std::cout << "\n\n\nMensagem Recebida on fd " << sockfd << "\n";
-    // std::cout << "msg.type: " << msg->type << "\n";
-    // std::cout << "msg.seqn: " << msg->seqn << "\n";
-    // std::cout << "msg.username: " << msg->username << "\n";
-    // std::cout << "msg.payload: " << msg->payload << "\n";
+    std::cout << "\n\n\nMensagem Recebida on fd " << sockfd << "\n";
+    std::cout << "msg.type: " << msg->type << "\n";
+    std::cout << "msg.seqn: " << msg->seqn << "\n";
+    std::cout << "msg.username: " << msg->username << "\n";
+    std::cout << "msg.payload: " << msg->payload << "\n";
 
 	//free(buffer);
     // std::cout << "Message_recv(): END on fd " << sockfd << "\n";

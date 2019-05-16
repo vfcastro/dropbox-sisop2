@@ -127,11 +127,7 @@ void ServerProcessor_propagateFiles(ServerCommunicator *sc, int connectionId, Me
 	int connectionId_toSend;
 
 	if(connection_ids.second == 0){
-		std::cout<<"MEU ID: " << connectionId << "ID FIRST: " << connection_ids.first << "\n";
-		std::cout<<"MEU ID: " << connectionId << "ID SECOND: " << connection_ids.second << "\n";
-		std::cout<<"NAO ENVIADO NA FILAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n";
 		return;
-
 	}else{
 		// Se existir dois dispositivos do mesmo usuario
 		if(mode == 0){
@@ -162,15 +158,48 @@ void ServerProcessor_propagateFiles(ServerCommunicator *sc, int connectionId, Me
 	}
 }
 
+void ServerProcessor_propagateDelete(ServerCommunicator *sc, int connectionId, Message *msg, std::string filename){
+	std::pair<int,int> connection_ids;
+	
+	std::cout << "PROPAGANDO DELETE " << msg->username << "\n";
+	
+	pthread_mutex_lock(&sc->userSessionsLock);
+	connection_ids = sc->userSessions.find(msg->username)->second;
+	pthread_mutex_unlock(&sc->userSessionsLock);
+
+	int connectionId_toSend;
+
+	if(connection_ids.second == 0){
+		return;
+	}else{
+		if(connection_ids.first == connectionId){
+			connectionId_toSend = connection_ids.second;
+
+		}else if(connection_ids.second == connectionId){
+			connectionId_toSend = connection_ids.first;;
+		}
+
+		pthread_mutex_lock(&sc->sendQueueLock);
+
+		// Necessita criar uma nova mensagem, se não o endereço na fila de mensagens vai ser igual pra todas
+		Message *msg_to_send = Message_create(DELETE_FILE, 1 , msg->username, filename.c_str());
+
+		// Envia mensagem avisando pra excluir arquivo
+		sc->sendQueue.at(connectionId_toSend).push(msg_to_send);
+
+		pthread_mutex_unlock(&sc->sendQueueLock);
+	}
+}
+
 void ServerProcessor_uploadCommand(ServerCommunicator *sc, Message *msg){
 	std::cout << "ServerProcessor_uploadCommand(): recv UPLOAD_FILE_CMD from client " << msg->username << "\n";
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
 	
-	std::string path("./sync_dir_server/");
+	std::string path("./sync_dir_");
 	path.append(msg->username).append("/");
 
 	path.append(msg->payload);
-
+	std::string filename(msg->payload);
 	std::cout << "ServerProcessor_uploadCommand(): creating file " << path << "\n";
 
 	int f = open((char*)path.c_str(),O_CREAT|O_WRONLY,0600);
@@ -200,32 +229,11 @@ void ServerProcessor_uploadCommand(ServerCommunicator *sc, Message *msg){
 	}
 
 	//Recupera o connectionId desta conexao
-	int connectionId = sc->threadConnId.find((pthread_self()))->second;
-	
-	//Checa para qual conexao enviar a msg
-	int idtonotify = 0;
-	if(sc->userSessions.at(msg->username).first == connectionId) {
-		if(sc->userSessions.at(msg->username).second != 0)
-			idtonotify = sc->userSessions.at(msg->username).second;
-	}
-	else
-		idtonotify = sc->userSessions.at(msg->username).first;
+	pthread_mutex_lock(&sc->connectionIdLock);
+	int connectionId = sc->threadConnId.find((pthread_self()))->second;	
+	pthread_mutex_unlock(&sc->connectionIdLock);
 
-
-	if(idtonotify != 0) {
-		//Posta msg na fila de envio do respectivo connectionId
-		Message *m = (Message*)malloc(sizeof(Message));
-		m->type = FILE_CLOSE_WRITE;
-		strcpy(m->username,msg->username);
-		pthread_mutex_lock(&sc->sendQueueLock);
-		sc->sendQueue.at(idtonotify).push(m);
-		pthread_mutex_unlock(&sc->sendQueueLock);
-	}
-	//Posta msg na fila de envio do respectivo connectionId
-	Message *m = (Message*)malloc(sizeof(Message));
-	m->type = UPLOAD_FILE_CMD;
-	strcpy(m->username,msg->username);
-	sc->sendQueue.at(connectionId).push(m);
+	ServerProcessor_propagateFiles(sc, connectionId, msg, filename, 0);
 
 	close(f);
 
@@ -236,7 +244,7 @@ void ServerProcessor_downloadCommand(ServerCommunicator *sc, Message *msg) {
 	std::cout << "ServerProcessor_downloadCommand(): recv DOWNLOAD_FILE_CMD from client " << msg->username << "\n";
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
 	
-	std::string path("./sync_dir_server/");
+	std::string path("./sync_dir_");
 	path.append(msg->username).append("/");
 
 	path.append(msg->payload);
@@ -274,19 +282,18 @@ void ServerProcessor_onDelete(ServerCommunicator *sc, Message *msg){
 	std::cout << "ServerProcessor_onDelete(): recv DELETE_FILE from client " << msg->username << "\n";
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
 
-	//primeira msg contem o nome do arquivo, cria caso necessario
-
-	std::string path("./sync_dir_server/");
+	std::string path("./sync_dir_");
 	path.append(msg->username).append("/");
 
 	path.append(msg->payload);
+
+	std::string filename(msg->payload);
 
 	std::cout << "ServerProcessor_onDelete(): removing file " << path << "\n";
 
 	const char *c = path.c_str();
 
     int Removed=std::remove(c);
-
 
 	if(Removed==0){
 		std::cout<<"File "<<path <<"removed from "<<msg->username<<"'s"<<" sync_dir"<<std::endl;
@@ -295,21 +302,15 @@ void ServerProcessor_onDelete(ServerCommunicator *sc, Message *msg){
 		std::cout<<"File "<<path <<"wasn't inside "<<msg->username<<"'s"<<" sync_dir"<<std::endl;
 	}
 
-
 	msg->type = OK;
 	Message_send(msg,sockfd);
 
 	//Recupera o connectionId desta conexao
-	int connectionId = sc->threadConnId.find((pthread_self()))->second;
-	//Posta msg na fila de envio do respectivo connectionId
-	Message *m = (Message*)malloc(sizeof(Message));
-	m->type = DELETE_FILE;
-	strcpy(m->username,msg->username);
-	pthread_mutex_lock(&sc->sendQueueLock);
-	sc->sendQueue.at(connectionId).push(m);
-	pthread_mutex_unlock(&sc->sendQueueLock);
-
-
+	pthread_mutex_lock(&sc->connectionIdLock);
+	int connectionId = sc->threadConnId.find((pthread_self()))->second;	
+	pthread_mutex_unlock(&sc->connectionIdLock);
+	
+	ServerProcessor_propagateDelete(sc, connectionId, msg, filename);
 	std::cout << "ServerProcessor_onDelete(): END recv DELETE_FILE from client " << msg->username << "\n";
 
 }
@@ -324,14 +325,6 @@ void ServerProcessor_listServerCommand(ServerCommunicator *sc, Message *msg){
 	
 	std::string path("./sync_dir_");
 	path.append(msg->username).append("/");
-
-	// Verifica se pasta do usuário existe, se não existe, cria
-	if(FileManager_openDir((char*)path.c_str()) == -1) {
-		if(FileManager_createDir((char*)path.c_str()) == -1) {
-			std::cerr << "Server(): ERROR creating " << path << "\n";
-			exit(-1);
-		}
-	}
 
 	char output[MAX_PAYLOAD_SIZE];
 
@@ -423,23 +416,30 @@ void ServerProcessor_getSync(ServerCommunicator *sc, Message *msg){
 		msg->type = OK;
 		Message_send(msg, sockfd);
 
-		for (int i = 0; i < filelist.size(); ++i){
+		for (int i = 0; i < filelist.size(); i++){
 			std::string path2(path);
 			path2.append(filelist[i]);
 
 			std::cout << path2 << "\n";
 			
-			if(i == filelist.size()-1){
+			if(i == filelist.size()){
 				msg->type = END;
-			}else{
-				msg->type = END_SYNC;
 			}
 
 			msg->type = OK;
+			// Envia o nome do arquivo
 			strcpy(msg->payload, filelist[i].c_str());
 			Message_send(msg, sockfd);
 
 			FileManager_sendFile(path2, msg, sockfd);
+
+			if(i == filelist.size()-1){
+				msg->type = END_SYNC;
+				Message_send(msg, sockfd);
+			}else{
+				msg->type = END;
+				Message_send(msg, sockfd);
+			}
 	  	} 
 	}else{
 		// Avisa o cliente que não há arquivos

@@ -1,9 +1,11 @@
 #include <iostream>
+#include <dirent.h>
 #include <sstream>
 #include <vector>
 #include <fcntl.h>
 #include <unistd.h>
 #include <string>
+#include <string.h>
 #include "../../include/client/ClientInterface.h"
 
 void ClientInterface_start(ClientCommunicator *cc) {
@@ -174,7 +176,18 @@ void ClientInterface_download(ClientCommunicator *cc, std::string filename){
 }
 
 void ClientInterface_delete(ClientCommunicator *cc, std::string filename){
-	std::cout << "ClientInterface_delete(): START";
+	std::cout<<"ClientInterface_delete(): Delete File " << filename << "\n";
+
+	std::string path("./sync_dir_");
+	path.append(cc->username).append("/");
+	path.append(filename);
+	
+	Message *msg = Message_create(DELETE_FILE, 0, cc->username, filename.c_str());
+	Message_send(msg, cc->sendsockfd);
+	Message_recv(msg, cc->sendsockfd);
+
+	int Removed = std::remove(path.c_str());
+
 }
 
 void ClientInterface_listServer(ClientCommunicator *cc){
@@ -187,26 +200,27 @@ void ClientInterface_listServer(ClientCommunicator *cc){
 
 	// Aguarda um Ok do server
 	if(Message_recv(msg, cc->sendsockfd) == -1){
-		std::cout << "ClientInterface_listServer(): ERROR recv -1 ";
+		std::cerr << "ClientInterface_listServer(): ERROR recv -1 ";
 	}
 
 	// Cada pacote recebido é uma linha do "ls -l" executado no server
-	while(Message_recv(msg,cc->sendsockfd) != -1) {
-		// Verifica se tipo = OK, se sim, para de dar read
+	while(Message_recv(msg, cc->sendsockfd) != -1) {
+		// Verifica se tipo = END, se sim, para de dar read
 		if(msg->type == END){
 			break;
 		}
 
 		// adiciona cada linha num vetor
+		std::cout << "Recebendo: " << msg->payload;
 		list_files.push_back(msg->payload);
-		msg->type = OK;
 	}
 
+
+	std::cout << "List Server result: " << "\n";
 	// imprime as linhas do "ls -l" na tela do cliente
 	for (int i = 0; i < list_files.size(); ++i){
-		std::cout << list_files[i];
+		std::cout << list_files[i] << "\n";
 	}
-
 }
 
 void ClientInterface_listClient(ClientCommunicator *cc){
@@ -216,28 +230,49 @@ void ClientInterface_listClient(ClientCommunicator *cc){
 	path.append(cc->username).append("/");
 	char output[MAX_PAYLOAD_SIZE];
 
+	DIR *dir;
+	struct dirent *ent;
+	std::vector<std::string> filelist;
+
+	if((dir = opendir(path.c_str())) != NULL) {
+  		while ((ent = readdir (dir)) != NULL) {
+  			if((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0))
+    			filelist.push_back(ent->d_name);
+  		}
+ 		closedir (dir);
+	} else {
+	
+	perror ("");
+	
+	}
+
 	FILE *fp;
-	std::string cmd("ls -l ");
-	cmd.append(path);
+	
+	std::cout << "List Client result: " << "\n";
 
-	fp = popen(cmd.c_str(), "r");
-	if (fp == NULL) {
-	    printf("ClientInterface_listClient: FAIL\n" );
-	    exit(1);
-	}
+	for (int i = 0; i < filelist.size(); ++i){
+		std::string cmd("stat --printf='M: %y | A: %x | C: %w ' ");
+		cmd.append(path);
+		cmd.append(filelist[i]);
 
-	int count = 0;
+		std::string payload("");
+		payload.append(filelist[i]);
+		payload.append(" | ");
 
-	while (fgets(output, MAX_PAYLOAD_SIZE-1, fp) != NULL) {
-	  	if(count == 0){
-			count = 1;
-			continue;
-		}
+		fp = popen(cmd.c_str(), "r");
+		if (fp == NULL) {
+			printf("Failed to run command\n" );
+			exit(1);
+	  	}
 
-		std::cout << output;
-	}
+	  	fgets(output, MAX_PAYLOAD_SIZE-1, fp);
+	  	payload.append(output);
 
-	pclose(fp);
+	    std::cout << payload << "\n";
+
+	  	/* close */
+	  	pclose(fp);
+  	}
 }
 
 void ClientInterface_exit(ClientCommunicator *cc){

@@ -120,8 +120,7 @@ void* ClientSync_watch(void *cs) {
 		       	}
 		      	else{
 			        printf("The file %s was IN_MOVED_FROM with WD %d\n", event->name, event->wd );
-		 				oldname = (char*)malloc(event->len);
-		 				strcpy(oldname,(const char*)event->name);
+		 				ClientSync_onDelete(c,event->name);
 				  	}
 		      }
 
@@ -131,8 +130,8 @@ void* ClientSync_watch(void *cs) {
 	         	}
 	        	else{
 		          printf("The file %s was IN_MOVED_TO to %s\n", oldname, event->name );
-			        ClientSync_onRename(c,oldname,event->name);
-							free(oldname);
+			        	ClientSync_onCloseWrite(c,event->name);
+						free(oldname);
 				  	}
 	        }
 
@@ -171,12 +170,10 @@ void ClientSync_sync(ClientSync *cs) {
 		return;
 	}
 
-
 	int receive_result = 0;
 	int type = 0;
 	// Recebe nome do arquivo
-	
-	std::cout<<"ClientSync_sync(): Iniciando While\n";
+
 	while(Message_recv(msg, socket) != -1){
 
 		type = msg->type;
@@ -184,25 +181,22 @@ void ClientSync_sync(ClientSync *cs) {
 		path.append("/");
 		path.append(msg->payload);
 
-		std::cout<<"ClientSync_sync(): entrando fileman\n";
 		receive_result = FileManager_receiveFile(path, msg, cs->cc->sendsockfd);
 
 		if(receive_result == -1){
 			std::cout<<"ClientSync_sync(): Error Send File\n";
 			break;
-		}else if(receive_result == 0){
-			break;
 		}
 
-		if(type == END_SYNC){
+		Message_recv(msg, socket);
+		if(msg->type == END_SYNC){
 			break;
 		}
-
-	std::cout<<"ClientSync_sync(): Fim While\n";
+		std::cout<<"ClientSync_sync(): type: " << msg->type << "\n";
+		std::cout<<"ClientSync_sync(): dentro\n";
 	}
 
-	std::cout<<"ClientSync_sync(): Fora While\n";
-
+	std::cout<<"ClientSync_sync(): fora\n";
 	return;
 
 }
@@ -237,7 +231,6 @@ void ClientSync_onDelete(ClientSync *cs, char *name) {
 	Message *msg = Message_create(DELETE_FILE, 0, cs->cc->username, (const char *)name);
 	Message_send(msg,cs->cc->sendsockfd);
 	Message_recv(msg,cs->cc->sendsockfd);
-
 
 }
 void ClientSync_onRename(ClientSync *cs, char *oldname, char* newname) {
