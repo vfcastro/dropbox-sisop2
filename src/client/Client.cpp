@@ -12,24 +12,19 @@ int main (int argc, char **argv)
 	std::string server = std::string(argv[2]);
 	unsigned int port = std::stoul(argv[3]);
 
-	//Init Communicator
 	ClientCommunicator cc;
 	ClientCommunicator_init(&cc,username,server,port);
 	std::cout << "main(): ClientCommunicator_init() finished\n";
-
-	//Inicia ClientSync
-	ClientSync cs;
-	ClientSync_init(&cs,&cc);
-
-	//Abre thread do client para receber do server
 	ClientCommunicator_start(&cc);
 	std::cout << "main(): ClientCommunicator_start() finished\n";
-
-	//Abre sessão com server
 	ClientCommunicator_openSession(&cc);
+	std::cout << "main(): ClientCommunicator_openSession() finished\n";
 
-	//Baixa sync_dir se necessario e dispara thread de watch do sync_dir
+	ClientSync cs;
+	ClientSync_init(&cs,&cc);
+	std::cout << "main(): ClientSync_init() finished\n";
 	ClientSync_get_sync_dir(&cs);
+	std::cout << "main(): ClientSync_get_sync_dir() finished\n";
 
 
 	ClientInterface_start(&cc);

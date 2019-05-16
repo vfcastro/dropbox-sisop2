@@ -58,7 +58,7 @@ void ServerCommunicator_start(ServerCommunicator *sc) {
 }
 
 void* ServerCommunicator_listen(void* sc) {
-	std::cout << "ServerCommunicator_listen(): START\n";
+	// std::cout << "ServerCommunicator_listen(): START\n";
 	ServerCommunicator *s = (ServerCommunicator*)sc;
 
 	listen(s->sockfd, s->backlog);
@@ -95,7 +95,7 @@ void* ServerCommunicator_listen(void* sc) {
 }
 
 void* ServerCommunicator_accept(void* sc) {
-	std::cout << "ServerCommunicator_accept(): START thread " << pthread_self() << "\n";
+	// std::cout << "ServerCommunicator_accept(): START thread " << pthread_self() << "\n";
 
 	ServerCommunicator *s = (ServerCommunicator*)sc;
 	
@@ -110,7 +110,7 @@ void* ServerCommunicator_accept(void* sc) {
 	// protocolo de abertura de conexao
 	if(Message_recv(msg,sockfd) != -1) {
 		if(msg->type == OPEN_SEND_CONN) {
-			std::cout << "ServerCommunicator_accept(): read msg OPEN_SEND_CONN\n";		
+			// std::cout << "ServerCommunicator_accept(): read msg OPEN_SEND_CONN\n";		
 
 			/* SECAO CRITICA */
 			//add map thread -> connectionId
@@ -143,7 +143,7 @@ void* ServerCommunicator_accept(void* sc) {
 			msg->type = OK;
 			msg->seqn = s->connectionId;
 			if(Message_send(msg,sockfd) != -1){
-				std::cout << "ServerCommunicator_accept(): sent reply OK\n";
+				// std::cout << "ServerCommunicator_accept(): sent reply OK\n";
 				ServerCommunicator_receive(s,sockfd);
 			}
 			else
@@ -151,10 +151,10 @@ void* ServerCommunicator_accept(void* sc) {
 		}
 		else 
 			if (msg->type == OPEN_RECV_CONN) {
-				std::cout << "ServerCommunicator_accept(): read msg OPEN_RECV_CONN\n";		
+				// std::cout << "ServerCommunicator_accept(): read msg OPEN_RECV_CONN\n";		
 				msg->type = OK;
 				if(Message_send(msg,sockfd) != -1) {
-					std::cout << "ServerCommunicator_accept(): sent reply OK\n";
+					// std::cout << "ServerCommunicator_accept(): sent reply OK\n";
 					// thread deve aguardar por msgs na fila identificada pelo connectionId
 					// que vem do campo seqn da msg
 					std::queue<Message*> queue;
@@ -180,11 +180,11 @@ void* ServerCommunicator_accept(void* sc) {
 	s->acceptedThreads.erase(pthread_self());
 	pthread_mutex_unlock(&s->acceptedThreadsLock);
 
-	std::cout << "ServerCommunicator_accept(): ENDED thread " << pthread_self() << "\n"; 
+	// std::cout << "ServerCommunicator_accept(): ENDED thread " << pthread_self() << "\n"; 
 }
 
 void ServerCommunicator_receive(ServerCommunicator *sc, int sockfd) {
-	std::cout << "ServerCommunicator_receive(): WAITING for msg on fd " << sockfd << "\n"; 
+	// std::cout << "ServerCommunicator_receive(): WAITING for msg on fd " << sockfd << "\n"; 
 	
 	Message *msg = (Message*)malloc(sizeof(Message));
 	while(Message_recv(msg,sockfd) != -1) {
@@ -192,17 +192,17 @@ void ServerCommunicator_receive(ServerCommunicator *sc, int sockfd) {
 	}
 
 	//free(msg);
-	std::cout << "ServerCommunicator_receive(): END " << sockfd << "\n"; 
+	// std::cout << "ServerCommunicator_receive(): END " << sockfd << "\n"; 
 }
 
 void ServerCommunicator_send(ServerCommunicator *sc, int sockfd, int connectionId) {
-	std::cout << "ServerCommunicator_send(): START on connId "<< connectionId <<"\n";
+	// std::cout << "ServerCommunicator_send(): START on connId "<< connectionId <<"\n";
 	// Enquanto socket esta aberto, tenta ler evento para enviar ao client
 	while(1) {
 		// checa se ha msgs na fila identificada por connectionId
 		pthread_mutex_lock(&sc->sendQueueLock);
 		if(sc->sendQueue.at(connectionId).size() > 0) {
-			std::cout << "ServerCommunicator_send() msg RECEIVED ON QUEUE!\n";
+			// std::cout << "ServerCommunicator_send() msg RECEIVED ON QUEUE!\n";
 			pthread_mutex_lock(&sc->userSessionsLock);
 			
 			Message *msg = sc->sendQueue.at(connectionId).front();
@@ -218,7 +218,7 @@ void ServerCommunicator_send(ServerCommunicator *sc, int sockfd, int connectionI
 			free(msg);
 			sc->sendQueue.at(connectionId).pop();
 			pthread_mutex_unlock(&sc->userSessionsLock);
-			std::cout << "ServerCommunicator_send() msg SENT!\n";
+			// std::cout << "ServerCommunicator_send() msg SENT!\n";
 		}
 		pthread_mutex_unlock(&sc->sendQueueLock);
 			

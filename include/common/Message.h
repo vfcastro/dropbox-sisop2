@@ -18,6 +18,8 @@
 #define DOWNLOAD_FILE_CMD 10 
 #define LIST_SERVER_CMD 11
 #define S2C_PROPAGATE 12
+#define GET_SYNC_DIR 13
+#define END_SYNC 14
 
 
 struct Message {

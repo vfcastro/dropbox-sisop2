@@ -33,12 +33,15 @@ void ClientSync_get_sync_dir(ClientSync *cs) {
 			std::cerr << "ClientSync_get_sync_dir(): ERROR creating dir " << cs->sync_dir << "\n";
 			exit(-1);
 		}
-		// Solicita todo o sync_dir do server
-		ClientSync_sync(cs);
 	}
+
+	// Solicita todo o sync_dir do server
+	ClientSync_sync(cs);
 
 	// Dispara thread de WATCH
 	pthread_create(&(cs->syncThread),0,ClientSync_watch,(void*)cs);
+
+	return;
 }
 
 void* ClientSync_watch(void *cs) {
@@ -154,20 +157,70 @@ void* ClientSync_watch(void *cs) {
 }
 
 void ClientSync_sync(ClientSync *cs) {
-	//TODO: baixar sync_dir do server
+	std::cout << "GET_SYNC_DIR: Sincronizando arquivos....\n";
+	int socket = cs->cc->sendsockfd;
+
+	Message *msg = Message_create(GET_SYNC_DIR, 0, cs->cc->username, std::string().c_str());
+
+	// Envia Requisição
+	Message_send(msg, socket);
+
+	// Aguarda Ok ou aviso que nao ha arquivos
+	Message_recv(msg, socket);
+	if(msg->type == NOK){
+		return;
+	}
+
+
+	int receive_result = 0;
+	int type = 0;
+	// Recebe nome do arquivo
+	
+	std::cout<<"ClientSync_sync(): Iniciando While\n";
+	while(Message_recv(msg, socket) != -1){
+
+		type = msg->type;
+		std::string path(cs->sync_dir);
+		path.append("/");
+		path.append(msg->payload);
+
+		std::cout<<"ClientSync_sync(): entrando fileman\n";
+		receive_result = FileManager_receiveFile(path, msg, cs->cc->sendsockfd);
+
+		if(receive_result == -1){
+			std::cout<<"ClientSync_sync(): Error Send File\n";
+			break;
+		}else if(receive_result == 0){
+			break;
+		}
+
+		if(type == END_SYNC){
+			break;
+		}
+
+	std::cout<<"ClientSync_sync(): Fim While\n";
+	}
+
+	std::cout<<"ClientSync_sync(): Fora While\n";
+
+	return;
 
 }
+
+
 //TODO :eliminar codigo duplicado em ClientSync_onCloseWrite e ClientSync_onDelete,deveria ser uma funcao apenas
 void ClientSync_onCloseWrite(ClientSync *cs, char *name) {
 	std::string path(cs->sync_dir);
 	path.append("/").append(name);
 	
-	int size = FileManager_getFileSize((char*)path.c_str());
 	Message *msg = Message_create(FILE_CLOSE_WRITE,0,cs->cc->username,(const char *)name);
 
-	std::cout<<"ClientSync_onCloseWrite(): file: "<<path<<" size: "<<size<<"\n";
+	std::cout<<"ClientSync_onCloseWrite(): file: "<<path << "\n";
 
+	// Envia Requisição
 	Message_send(msg,cs->cc->sendsockfd);
+
+	// Aguarda Ok
 	Message_recv(msg,cs->cc->sendsockfd);
 
 	if(FileManager_sendFile(path, msg, cs->cc->sendsockfd) == -1){

@@ -103,12 +103,12 @@ int FileManager_sendFile2Queue(ServerCommunicator *sc, std::string path, Message
 	int bytes_recv = read(f, msg_to_send->payload, MAX_PAYLOAD_SIZE);
 
 	while(bytes_recv){
-		std::cout << "$$$$$$$$$$$$$$$$$$$$: " << msg_to_send->payload << "\n";
+		// std::cout << "$$$$$$$$$$$$$$$$$$$$: " << msg_to_send->payload << "\n";
 
 		std::cout << "FileManager_sendFile(): read " << bytes_recv << " bytes from file " << full_path << "\n";
 		msg_to_send->seqn = bytes_recv;
 
-		std::cout<<"Enviando arquivos na fila | msg_to_send->type: " << msg_to_send->type << "\n";
+		// std::cout<<"Enviando arquivos na fila | msg_to_send->type: " << msg_to_send->type << "\n";
 		sc->sendQueue.at(connectionId).push(msg_to_send);
 
 		msg_to_send = Message_create(S2C_PROPAGATE, 0 , msg->username, std::string().c_str());
@@ -121,14 +121,14 @@ int FileManager_sendFile2Queue(ServerCommunicator *sc, std::string path, Message
 	msg_to_send = Message_create(END, 0 , msg->username, std::string().c_str());
 	bzero(msg_to_send->payload, MAX_PAYLOAD_SIZE);
 
-	std::cout<<"Enviando arquivo na fila | msg_to_send->type: " << msg_to_send->type << "\n";
+	// std::cout<<"Enviando arquivo na fila | msg_to_send->type: " << msg_to_send->type << "\n";
 	sc->sendQueue.at(connectionId).push(msg_to_send);
 	pthread_mutex_unlock(&sc->sendQueueLock);
 
 	return 0;
 }
 
-
+// Recebe um arquivo do servidor ou cliente, dado um socket e um path
 int FileManager_receiveFile(std::string path, Message *msg, int socket){
 	int f = open((char*)path.c_str(), O_CREAT|O_WRONLY, 0600);
 
@@ -140,10 +140,10 @@ int FileManager_receiveFile(std::string path, Message *msg, int socket){
 	while(Message_recv(msg,socket) != -1) {
 		// Verifica se tipo = END, se sim, para de escrever
 		if(msg->type == END){
-			break;
+			return 0;
 		}
 
-		std::cout << "FileManager_receiveFile(): recv payload with " << msg->seqn << " bytes\n";
+		// std::cout << "FileManager_receiveFile(): recv payload with " << msg->seqn << " bytes\n";
 		
 		if(write(f, (const void *)msg->payload, msg->seqn) == -1){
 			exit(6);

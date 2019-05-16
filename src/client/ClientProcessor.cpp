@@ -70,10 +70,10 @@ void ClientProcessor_onCloseWrite(ClientCommunicator *cc, Message *msg) {
 void ClientProcessor_receivePropagate(ClientCommunicator *cc, Message *msg) {
    // std::cout << "ClientProcessor_receivePropagate(): recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
 
-   std::string path("./sync_dir_");
-   path.append(cc->username).append("/");
-   path.append("/").append(msg->payload);
-   std::cout << "ClientProcessor_receivePropagate(): creating file " << path << "\n"; 
+   	std::string path("./sync_dir_");
+   	path.append(cc->username).append("/");
+   	path.append("/").append(msg->payload);
+   	std::cout << "ClientProcessor_receivePropagate(): creating file " << path << "\n"; 
 
 
    pthread_mutex_lock(&cc->syncFilesLock);

@@ -70,11 +70,11 @@ int Message_send(Message *msg, int sockfd) {
         return -1;
     }
 
-    // std::cout << "\n\n\nMensagem Enviada on fd " << sockfd << "\n";
-    // std::cout << "msg.type: " << msg->type << "\n";
-    // std::cout << "msg.seqn: " << msg->seqn << "\n";
-    // std::cout << "msg.username: " << msg->username << "\n";
-    // std::cout << "msg.payload: " << msg->payload << "\n\n\n";
+    std::cout << "\n\n\nMensagem Enviada on fd " << sockfd << "\n";
+    std::cout << "msg.type: " << msg->type << "\n";
+    std::cout << "msg.seqn: " << msg->seqn << "\n";
+    std::cout << "msg.username: " << msg->username << "\n";
+    std::cout << "msg.payload: " << msg->payload << "\n\n\n";
 
     //free(buffer);
     // std::cout << "Message_send(): END on fd " << sockfd << "\n";

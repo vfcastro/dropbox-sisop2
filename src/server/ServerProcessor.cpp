@@ -1,4 +1,5 @@
 #include <iostream>
+#include <dirent.h>
 #include <sstream>
 #include <string>
 #include <cstring>
@@ -11,7 +12,7 @@
 
 
 void ServerProcessor_dispatch(ServerCommunicator *sc, Message *msg) {
-	std::cout << "ServerProcessor_dispatch(): START\n";
+	// std::cout << "ServerProcessor_dispatch(): START\n";
 	switch(msg->type) {
 		case OPEN_SESSION:
 			ServerProcessor_openSession(sc,msg);
@@ -36,14 +37,17 @@ void ServerProcessor_dispatch(ServerCommunicator *sc, Message *msg) {
 			ServerProcessor_listServerCommand(sc,msg);
 		break;
 		
+		case GET_SYNC_DIR:
+			ServerProcessor_getSync(sc,msg);
+		break;
+
 		default:
 			std::cout<<"ERROR MSG TYPE INVALID"<<std::endl;
 			break;
 
 	}
 
-
-	std::cout << "ServerProcessor_dispatch(): END\n";
+	// std::cout << "ServerProcessor_dispatch(): END\n";
 }
 
 void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
@@ -139,20 +143,20 @@ void ServerProcessor_propagateFiles(ServerCommunicator *sc, int connectionId, Me
 
 		}else if(mode == 1){
 			if(connection_ids.first == connectionId){
-				std::cout<<"#####################################\n";
+				// std::cout<<"#####################################\n";
 
 				connectionId_toSend = connection_ids.second;
-				std::cout<<"MEU ID: " << connectionId << "ID ENVIO: " << connectionId_toSend << "\n";
+				// std::cout<<"MEU ID: " << connectionId << "ID ENVIO: " << connectionId_toSend << "\n";
 
 			}else if(connection_ids.second == connectionId){
-				std::cout<<"#####################################\n";
+				// std::cout<<"#####################################\n";
 
 				connectionId_toSend = connection_ids.first;
-				std::cout<<"MEU ID: " << connectionId << "ID ENVIO: " << connectionId_toSend << "\n";
+				// std::cout<<"MEU ID: " << connectionId << "ID ENVIO: " << connectionId_toSend << "\n";
 			}
 
 			// Propagada pra connectionId_toSend
-			std::cout<<"propagada pra " << connectionId_toSend << "\n";
+			// std::cout<<"propagada pra " << connectionId_toSend << "\n";
 			FileManager_sendFile2Queue(sc, filename, msg, connectionId_toSend);
 		}
 	}
@@ -164,14 +168,6 @@ void ServerProcessor_uploadCommand(ServerCommunicator *sc, Message *msg){
 	
 	std::string path("./sync_dir_server/");
 	path.append(msg->username).append("/");
-
-	// Verifica se pasta do usuário existe, se não existe, cria
-	if(FileManager_openDir((char*)path.c_str()) == -1) {
-		if(FileManager_createDir((char*)path.c_str()) == -1) {
-				std::cerr << "Server(): ERROR creating " << path << "\n";
-				exit(-1);
-		}
-	}
 
 	path.append(msg->payload);
 
@@ -243,14 +239,6 @@ void ServerProcessor_downloadCommand(ServerCommunicator *sc, Message *msg) {
 	std::string path("./sync_dir_server/");
 	path.append(msg->username).append("/");
 
-	// Verifica se pasta do usuário existe, se não existe, cria
-	if(FileManager_openDir((char*)path.c_str()) == -1) {
-		if(FileManager_createDir((char*)path.c_str()) == -1) {
-				std::cerr << "Server(): ERROR creating " << path << "\n";
-				exit(-1);
-		}
-	}
-
 	path.append(msg->payload);
 
 	int f;
@@ -290,14 +278,6 @@ void ServerProcessor_onDelete(ServerCommunicator *sc, Message *msg){
 
 	std::string path("./sync_dir_server/");
 	path.append(msg->username).append("/");
-
-	// Verifica se pasta do usuário existe, se não existe, cria
-	if(FileManager_openDir((char*)path.c_str()) == -1) {
-		if(FileManager_createDir((char*)path.c_str()) == -1) {
-				std::cerr << "Server(): ERROR creating " << path << "\n";
-				exit(-1);
-		}
-	}
 
 	path.append(msg->payload);
 
@@ -342,53 +322,129 @@ void ServerProcessor_listServerCommand(ServerCommunicator *sc, Message *msg){
 	std::cout << "ServerProcessor_listServerCommand(): START";
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
 	
-	std::string path("./sync_dir_server/");
+	std::string path("./sync_dir_");
 	path.append(msg->username).append("/");
 
 	// Verifica se pasta do usuário existe, se não existe, cria
 	if(FileManager_openDir((char*)path.c_str()) == -1) {
 		if(FileManager_createDir((char*)path.c_str()) == -1) {
-				std::cerr << "Server(): ERROR creating " << path << "\n";
-				exit(-1);
+			std::cerr << "Server(): ERROR creating " << path << "\n";
+			exit(-1);
 		}
 	}
 
-	FILE *fp;
-	std::string cmd("ls -l ");
-	cmd.append(path);
+	char output[MAX_PAYLOAD_SIZE];
 
-  	// Executa comando ls
-	fp = popen(cmd.c_str(), "r");
-	if (fp == NULL) {
-	    printf("Failed to run command\n" );
-	    exit(1);
+	DIR *dir;
+	struct dirent *ent;
+	std::vector<std::string> filelist;
+
+	if((dir = opendir(path.c_str())) != NULL) {
+  		while ((ent = readdir (dir)) != NULL) {
+  			if((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0))
+    			filelist.push_back(ent->d_name);
+  		}
+ 		closedir (dir);
+	} else {
+	
+	perror ("");
+	
 	}
 
-	int count = 0;
-	
-	// Envia OK para o cliente
 	msg->type = OK;
 	Message_send(msg, sockfd);
 
-	msg->seqn = MAX_PAYLOAD_SIZE;
+	FILE *fp;
+	
+	for (int i = 0; i < filelist.size(); ++i){
+		std::string cmd("stat --printf='M: %y | A: %x | C: %w ' ");
+		cmd.append(path);
+		cmd.append(filelist[i]);
 
-	while (fgets(msg->payload, MAX_PAYLOAD_SIZE-1, fp) != NULL) {
-	  	if(count == 0){
-			count = 1;
-			continue;
-		}
+		std::string payload("");
+		payload.append(filelist[i]);
+		payload.append(" | ");
 
-		Message_send(msg, sockfd);
-	}
+		fp = popen(cmd.c_str(), "r");
+		if (fp == NULL) {
+			printf("Failed to run command\n" );
+			exit(1);
+	  	}
 
-	msg->type = END;
+	  	fgets(output, MAX_PAYLOAD_SIZE-1, fp);
+	  	payload.append(output);
+
+	  	strcpy(msg->payload, payload.c_str());
+	  	msg->seqn = MAX_PAYLOAD_SIZE;
+	  	Message_send(msg, sockfd);
+
+	  	/* close */
+	  	pclose(fp);
+  	}
+
+  	msg->type = END;
 	Message_send(msg, sockfd);
-
-	pclose(fp);
-
 }
 
 void ServerProcessor_exitCommand(ServerCommunicator *sc, Message *msg){
 	std::cout << "ServerProcessor_exitCommand(): START";
 }
 
+void ServerProcessor_getSync(ServerCommunicator *sc, Message *msg){
+	std::cout << "ServerProcessor_getSync(): recv GET_SYNC_DIR from client " << msg->username << "\n";
+	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
+	
+	std::string path("./sync_dir_");
+	path.append(msg->username).append("/");
+
+	char output[MAX_PAYLOAD_SIZE];
+
+	DIR *dir;
+	struct dirent *ent;
+	std::vector<std::string> filelist;
+
+	if((dir = opendir(path.c_str())) != NULL) {
+  		while ((ent = readdir (dir)) != NULL) {
+  			if((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0)){
+    			filelist.push_back(ent->d_name);
+  			}
+  		}
+ 		closedir (dir);
+	} else {
+	
+	perror ("");
+	
+	}
+	
+	
+	if(filelist.size() != 0){
+
+		// Avisa o cliente que vai comecar enviar
+		msg->type = OK;
+		Message_send(msg, sockfd);
+
+		for (int i = 0; i < filelist.size(); ++i){
+			std::string path2(path);
+			path2.append(filelist[i]);
+
+			std::cout << path2 << "\n";
+			
+			if(i == filelist.size()-1){
+				msg->type = END;
+			}else{
+				msg->type = END_SYNC;
+			}
+
+			msg->type = OK;
+			strcpy(msg->payload, filelist[i].c_str());
+			Message_send(msg, sockfd);
+
+			FileManager_sendFile(path2, msg, sockfd);
+	  	} 
+	}else{
+		// Avisa o cliente que não há arquivos
+		msg->type = NOK;
+		Message_send(msg, sockfd);
+	}
+
+}
