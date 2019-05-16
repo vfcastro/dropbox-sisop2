@@ -80,6 +80,52 @@ int FileManager_sendFile(std::string path, Message *msg, int socket){
 	return 0;
 }
 
+int FileManager_sendFile2Queue(ServerCommunicator *sc, std::string path, Message *msg, int connectionId){
+	int f;
+
+	pthread_mutex_lock(&sc->sendQueueLock);
+
+	// Necessita criar uma nova mensagem, se não o endereço na fila de mensagens vai ser igual pra todas
+	Message *msg_to_send = Message_create(S2C_PROPAGATE, 1 , msg->username, path.c_str());
+
+	// Envia mensagem avisando que vai ter arquivo pra sincronizar
+	sc->sendQueue.at(connectionId).push(msg_to_send);
+
+	if((f = open(path.c_str(), O_RDONLY)) == -1){
+		std::cerr << "FileManager_sendFile(): ERROR opening file " << path << "\n";
+		return -1;
+	}
+
+	msg_to_send = Message_create(S2C_PROPAGATE, 0 , msg->username, std::string().c_str());
+	int bytes_recv = read(f, msg_to_send->payload, MAX_PAYLOAD_SIZE);
+
+	while(bytes_recv){
+		std::cout << "$$$$$$$$$$$$$$$$$$$$: " << msg_to_send->payload << "\n";
+
+		std::cout << "FileManager_sendFile(): read " << bytes_recv << " bytes from file " << path << "\n";
+		msg_to_send->seqn = bytes_recv;
+
+		std::cout<<"Enviando arquivos na fila | msg_to_send->type: " << msg_to_send->type << "\n";
+		sc->sendQueue.at(connectionId).push(msg_to_send);
+
+		msg_to_send = Message_create(S2C_PROPAGATE, 0 , msg->username, std::string().c_str());
+		bzero(msg_to_send->payload, MAX_PAYLOAD_SIZE);
+		bytes_recv = read(f, msg_to_send->payload, MAX_PAYLOAD_SIZE);
+	}
+
+	close(f);
+
+	msg_to_send = Message_create(END, 0 , msg->username, std::string().c_str());
+	bzero(msg_to_send->payload, MAX_PAYLOAD_SIZE);
+
+	std::cout<<"Enviando arquivo na fila | msg_to_send->type: " << msg_to_send->type << "\n";
+	sc->sendQueue.at(connectionId).push(msg_to_send);
+	pthread_mutex_unlock(&sc->sendQueueLock);
+
+	return 0;
+}
+
+
 int FileManager_receiveFile(std::string path, Message *msg, int socket){
 	int f = open((char*)path.c_str(), O_CREAT|O_WRONLY, 0600);
 

@@ -10,7 +10,6 @@ struct ClientSync {
 	
 	//conjunto de arquivos sendo sincronizados no momento
 	std::set<std::string> syncFiles;
-	pthread_mutex_t syncFilesLock;
 
 	//Referencia para o ClientCommunicator
 	ClientCommunicator *cc;

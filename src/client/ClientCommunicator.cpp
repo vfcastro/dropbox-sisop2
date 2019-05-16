@@ -10,7 +10,10 @@
 #include "../../include/client/ClientSync.h"
 
 void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::string server, unsigned int port) {
-	std::cout << "ClientCommunicator_init(): START\n";
+	// std::cout << "ClientCommunicator_init(): START\n";
+
+	cc->pauseSync = 0;
+	pthread_mutex_init(&cc->syncFilesLock, NULL);
 
 	if(username.size() > MAX_USERNAME_SIZE) {
 		std::cerr << "ClientCommunicator_init(): username too long. Max" << MAX_USERNAME_SIZE << "characters\n";
@@ -73,10 +76,11 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
 	// Solicita abertura de conexao de envio
 	Message *msg = Message_create(OPEN_SEND_CONN,0,std::string(cc->username).c_str(),std::string().c_str());
 	if(Message_send(msg,cc->sendsockfd) != -1) {
-		std::cout << "ClientCommunicator_init(): sent msg OPEN_SEND_CONN\n";
+		// std::cout << "ClientCommunicator_init(): sent msg OPEN_SEND_CONN\n";
 	    if(Message_recv(msg,cc->sendsockfd) != -1) { 
 	    	if(msg->type == OK) {
-				std::cout << "ClientCommunicator_init(): recv OK for OPEN_SEND_CONN\n";
+	    		std::cout << "";
+				// std::cout << "ClientCommunicator_init(): recv OK for OPEN_SEND_CONN\n";
 			}
 			else {
 				std::cerr << "ClientCommunicator_init(): ERROR recv OK for OPEN_SEND_CONN\n";
@@ -99,10 +103,11 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
 	std::cout << "ClientCommunicator_init(): CONNECTIONNNNNNNNNNNNN ID " << connectionId << "\n";
 	msg = Message_create(OPEN_RECV_CONN,connectionId,std::string(cc->username).c_str(),std::string().c_str());
 	if(Message_send(msg,cc->recvsockfd) != -1) {
-		std::cout << "ClientCommunicator_init(): sent msg OPEN_RECV_CONN\n";
+		// std::cout << "ClientCommunicator_init(): sent msg OPEN_RECV_CONN\n";
 	    if(Message_recv(msg,cc->recvsockfd) != -1) { 
-	    	if(msg->type == OK)
+	    	if(msg->type == OK){
 				std::cout << "ClientCommunicator_init(): recv OK for OPEN_RECV_CONN\n";
+	    	}
 			else {
 				std::cerr << "ClientCommunicator_init(): ERROR recv OK for OPEN_RECV_CONN\n";
 				exit(-1);
@@ -114,50 +119,50 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
 		}
 	}
 	else {
-		std::cout << "ClientCommunicator_init(): ERROR sent msg OPEN_RECV_CONN\n";
+		std::cerr << "ClientCommunicator_init(): ERROR sent msg OPEN_RECV_CONN\n";
 		exit(-1);
 	}
 
 	//free(msg);
-	std::cout << "ClientCommunicator_init(): send and recv sockets connected to server\n";
-	std::cout << "ClientCommunicator_init(): END\n";
+	// std::cout << "ClientCommunicator_init(): send and recv sockets connected to server\n";
+	// std::cout << "ClientCommunicator_init(): END\n";
 }
 
 
 void ClientCommunicator_start(ClientCommunicator *cc) {
-	std::cout << "ClientCommunicator_start(): START\n";
+	// std::cout << "ClientCommunicator_start(): START\n";
 
 	// start receive thread
 	pthread_create(&(cc->recvThread),0,ClientCommunicator_receive,(void*)cc);
 
 
-	std::cout << "ClientCommunicator_start(): END\n";
+	// std::cout << "ClientCommunicator_start(): END\n";
 }
 
 void* ClientCommunicator_receive(void *cc) {
 	ClientCommunicator *c = (ClientCommunicator*)cc; 
-	std::cout << "ClientCommunicator_receive(): STARTED thread " << pthread_self() << "\n";
-	std::cout << "ClientCommunicator_receive(): WAITING for msg on fd " << c->recvsockfd << "\n";
+	// std::cout << "ClientCommunicator_receive(): STARTED thread " << pthread_self() << "\n";
+	// std::cout << "ClientCommunicator_receive(): WAITING for msg on fd " << c->recvsockfd << "\n";
 
     Message *msg = (Message*)malloc(sizeof(Message));
     while(1) {
-		Message_recv(msg,c->recvsockfd);
+		Message_recv(msg, c->recvsockfd);
         ClientProcessor_dispatch(c,msg);
     }
 
     free(msg);
-	std::cout << "ClientCommunicator_receive(): END receive for msg on fd " << c->recvsockfd << "\n";
+	// std::cout << "ClientCommunicator_receive(): END receive for msg on fd " << c->recvsockfd << "\n";
 }
 
 void ClientCommunicator_openSession(ClientCommunicator *cc) {
-	std::cout << "ClientCommunicator_openSession(): START\n";
+	// std::cout << "ClientCommunicator_openSession(): START\n";
 
 	Message *msg = Message_create(OPEN_SESSION,0,std::string(cc->username).c_str(),std::string().c_str());
 	if(Message_send(msg,cc->sendsockfd) == -1){
 		std::cerr << "ClientCommunicator_openSession(): ERROR sending OPEN_SESSION\n";
 		exit(-1);
 	}
-	std::cout << "ClientCommunicator_openSession(): sent msg OPEN_SESSION\n";
+	// std::cout << "ClientCommunicator_openSession(): sent msg OPEN_SESSION\n";
 
 	if(Message_recv(msg,cc->sendsockfd) == -1) {
 		std::cerr << "ClientCommunicator_openSession(): ERROR recv OK for OPEN_SESSION\n";
@@ -169,9 +174,9 @@ void ClientCommunicator_openSession(ClientCommunicator *cc) {
     	exit(-1);
     }
 
-	std::cout << "ClientCommunicator_openSession(): recv OK for OPEN_SESSION\n";
+	// std::cout << "ClientCommunicator_openSession(): recv OK for OPEN_SESSION\n";
 
-	std::cout << "ClientCommunicator_openSession(): END\n";
+	// std::cout << "ClientCommunicator_openSession(): END\n";
 }
 
 

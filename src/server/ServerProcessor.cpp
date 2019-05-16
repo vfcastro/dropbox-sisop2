@@ -93,26 +93,69 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	//Monta o path com o nome do arquivo recebido no payload da msg
 	std::string path(sync_dir);
 	path.append("/").append(msg->payload);
+	std::string filename(msg->payload);
 	std::cout << "ServerProcessor_onCloseWrite(): creating file " << path << "\n";
 
 	// Envia um OK para o cliente
 	msg->type = OK;
 	Message_send(msg,sockfd);
-
+	
 	// Começa o recebimento do arquivo
-	if(FileManager_receiveFile(path, msg,sockfd) == -1){
+	if(FileManager_receiveFile(path, msg, sockfd) == -1){
 		std::cout<<"ServerProcessor_onCloseWrite(): Error Receive File\n";
 	}
 
 	// Propaga o arquivo para o restante dos dispositivos
-	msg->type = 66;
-	
-	pthread_mutex_lock(&sc->sendQueueLock);
-	std::cout<<"ENVIADO NA FILAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n";
-	sc->sendQueue.at(connectionId).push(msg);
-	pthread_mutex_unlock(&sc->sendQueueLock);
+	ServerProcessor_propagateFiles(sc, connectionId, msg, filename, 1);
 
 	std::cout << "ServerProcessor_onCloseWrite(): END recv FILE_CLOSE_WRITE from client " << msg->username << "\n";
+}
+
+// Mode = 0: todos usuarios
+// mode = 1: apenas os restantes
+void ServerProcessor_propagateFiles(ServerCommunicator *sc, int connectionId, Message *msg, std::string filename, int mode){
+	std::pair<int,int> connection_ids;
+	
+	pthread_mutex_lock(&sc->userSessionsLock);
+	connection_ids = sc->userSessions.find(msg->username)->second;
+	pthread_mutex_unlock(&sc->userSessionsLock);
+
+	int connectionId_toSend;
+
+	if(connection_ids.second == 0){
+		std::cout<<"MEU ID: " << connectionId << "ID FIRST: " << connection_ids.first << "\n";
+		std::cout<<"MEU ID: " << connectionId << "ID SECOND: " << connection_ids.second << "\n";
+		std::cout<<"NAO ENVIADO NA FILAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n";
+		return;
+
+	}else{
+		// Se existir dois dispositivos do mesmo usuario
+		if(mode == 0){
+				std::cout<<"propagada pra todos\n";
+				
+				// Propaga pra todos
+				FileManager_sendFile2Queue(sc, filename, msg, connection_ids.first);
+				FileManager_sendFile2Queue(sc, filename, msg, connection_ids.second);
+
+		}else if(mode == 1){
+			if(connection_ids.first == connectionId){
+				std::cout<<"#####################################\n";
+
+				connectionId_toSend = connection_ids.second;
+				std::cout<<"MEU ID: " << connectionId << "ID ENVIO: " << connectionId_toSend << "\n";
+
+			}else if(connection_ids.second == connectionId){
+				std::cout<<"#####################################\n";
+
+				connectionId_toSend = connection_ids.first;
+				std::cout<<"MEU ID: " << connectionId << "ID ENVIO: " << connectionId_toSend << "\n";
+			}
+
+			// Propagada pra connectionId_toSend
+			std::cout<<"propagada pra " << connectionId_toSend << "\n";
+			FileManager_sendFile2Queue(sc, filename, msg, connectionId_toSend);
+		}
+	}
 }
 
 void ServerProcessor_uploadCommand(ServerCommunicator *sc, Message *msg){

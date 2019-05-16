@@ -17,6 +17,7 @@
 #define UPLOAD_FILE_CMD 9
 #define DOWNLOAD_FILE_CMD 10 
 #define LIST_SERVER_CMD 11
+#define S2C_PROPAGATE 12
 
 
 struct Message {

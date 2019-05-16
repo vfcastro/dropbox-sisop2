@@ -1,5 +1,6 @@
 #include <iostream>
 #include "../../include/common/Message.h"
+#include "../../include/server/ServerCommunicator.h"
 
 
 int FileManager_createDir(char* name);
@@ -13,3 +14,4 @@ int FileManager_readFile(int fd, char* buffer);
 int FileManager_writeFile(int fd, char* buffer);
 int FileManager_sendFile(std::string path, Message *msg, int socket);
 int FileManager_receiveFile(std::string path, Message *msg, int socket);
+int FileManager_sendFile2Queue(ServerCommunicator *sc, std::string path, Message *msg, int connectionId);

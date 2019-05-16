@@ -22,7 +22,7 @@
 void ClientSync_init(ClientSync *cs, ClientCommunicator *cc) {
 	cs->sync_dir = std::string("./sync_dir_").append(cc->username);
 	cs->cc = cc;
-	pthread_mutex_init(&cs->syncFilesLock,NULL);
+	pthread_mutex_init(&cc->syncFilesLock,NULL);
 }
 
 void ClientSync_get_sync_dir(ClientSync *cs) {
@@ -55,6 +55,8 @@ void* ClientSync_watch(void *cs) {
 
 	/* Initialize Inotify*/
 	fd = inotify_init();
+
+	int pauseSync;
 
 	if ( fd < 0 ) {
 		perror( "Couldn't initialize inotify");
@@ -89,8 +91,17 @@ void* ClientSync_watch(void *cs) {
 		            	printf("The directory %s was modified.\n", event->name );
 		        	}
 		          	else{
-			            printf("The file %s was IN_CLOSE_WRITE with WD %d\n", event->name, event->wd );
-			          	ClientSync_onCloseWrite(c,event->name);
+						printf("The file %s was IN_CLOSE_WRITE with WD %d\n", event->name, event->wd );
+			       		pthread_mutex_lock(&c->cc->syncFilesLock);
+			       		std::cout << "inotify(): entrou Mutex \n";   
+						pauseSync = c->cc->pauseSync;
+						if(pauseSync == 1){
+							std::cout << "inotify(): pause = Mutex \n";   
+						}else{
+							ClientSync_onCloseWrite(c,event->name);
+						}
+						pthread_mutex_unlock(&c->cc->syncFilesLock);
+						std::cout << "inotify(): saiu Mutex \n"; 
 			        }
 		        }
 
@@ -146,10 +157,10 @@ void ClientSync_onCloseWrite(ClientSync *cs, char *name) {
 	path.append("/").append(name);
 	
 	int size = FileManager_getFileSize((char*)path.c_str());
-	
+	Message *msg = Message_create(FILE_CLOSE_WRITE,0,cs->cc->username,(const char *)name);
+
 	std::cout<<"ClientSync_onCloseWrite(): file: "<<path<<" size: "<<size<<"\n";
 
-	Message *msg = Message_create(FILE_CLOSE_WRITE,0,cs->cc->username,(const char *)name);
 	Message_send(msg,cs->cc->sendsockfd);
 	Message_recv(msg,cs->cc->sendsockfd);
 
@@ -170,4 +181,6 @@ void ClientSync_onDelete(ClientSync *cs, char *name) {
 
 
 }
-void ClientSync_onRename(ClientSync *cs, char *oldname, char* newname) {}
+void ClientSync_onRename(ClientSync *cs, char *oldname, char* newname) {
+
+}

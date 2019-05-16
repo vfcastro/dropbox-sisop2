@@ -14,6 +14,9 @@ struct ClientCommunicator {
   int recvsockfd;
   pthread_t recvThread;
 
+  int pauseSync = 0;
+  pthread_mutex_t syncFilesLock;
+
  };
 
 void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::string server, unsigned int port);

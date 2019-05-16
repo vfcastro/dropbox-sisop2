@@ -7,7 +7,7 @@
 #include "../../include/client/ClientInterface.h"
 
 void ClientInterface_start(ClientCommunicator *cc) {
-	std::cout << "ClientInterface_start(): START\n";
+	// std::cout << "ClientInterface_start(): START\n";
 	bool exit = false;
 	std::string command;
 
@@ -17,7 +17,7 @@ void ClientInterface_start(ClientCommunicator *cc) {
 		ClientInterface_command(command, &exit, cc);
 	}
 
-	std::cout << "ClientInterface_start(): STOP\n";
+	// std::cout << "ClientInterface_start(): STOP\n";
 }
 
 void ClientInterface_command(std::string command, bool* exit, ClientCommunicator *cc){
