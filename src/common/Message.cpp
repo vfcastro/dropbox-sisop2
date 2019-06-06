@@ -83,14 +83,21 @@ int Message_send(Message *msg, int sockfd) {
 
 int Message_recv(Message *msg, int sockfd) {
     // std::cout << "Message_recv(): START on fd " << sockfd << "\n";
-    Message *buffer = (Message *) malloc(sizeof(Message));
+    Message *buffer = (Message *)malloc(sizeof(Message));
     int bytes_recv;
 
-    if((bytes_recv = read(sockfd,(void*)buffer,sizeof(Message))) == -1) {
-		free(buffer);
-        std::cerr << "Message_recv(): recv FAILED on fd "<< sockfd << " bytes_recv: " << bytes_recv << "\n";
-        return -1;
+    int tentantivas = 0;
+
+    while((bytes_recv = read(sockfd,(void*)buffer, sizeof(Message))) != sizeof(Message)){
+        if(tentantivas > 10){
+            free(buffer);
+            std::cerr << "Message_recv(): recv FAILED on fd "<< sockfd << " bytes_recv: " << bytes_recv << "\n";
+            return -1;
+        }
+
+        tentantivas++;
     }
+
     Message_unmarshall(msg,buffer);
         
     // std::cout << "\n\n\nMensagem Recebida on fd " << sockfd << "\n";
