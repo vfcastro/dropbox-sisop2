@@ -148,14 +148,18 @@ void* ClientCommunicator_receive(void *cc) {
     
     if((msg = (Message*)malloc(sizeof(Message))) == NULL){
     	std::cerr << "ClientCommunicator_receive(): ERROR malloc msg\n";
+    	pthread_exit(NULL);
     }
 
-    while(1) {
+    while(Message_recv(msg, c->recvsockfd) != -1) {
 		Message_recv(msg, c->recvsockfd);
         ClientProcessor_dispatch(c,msg);
     }
 
+    std::cerr << "ClientCommunicator_receive(): Fechando\n";
+
     free(msg);
+	exit(0);
 	// std::cout << "ClientCommunicator_receive(): END receive for msg on fd " << c->recvsockfd << "\n";
 }
 

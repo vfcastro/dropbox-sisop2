@@ -163,7 +163,14 @@ int Message_recv(Message *msg, int sockfd) {
         bytes_recv = read(sockfd, buffer_socket_inicio, sizeof(Message));
         
         if(bytes_recv == -1){
-            std::cout << "\n\n####### linha 134 free" << std::endl;
+            std::cout << "\n\n####### Erro de leitura, dando free no buffer_socket" << std::endl;
+            free(buffer_socket_inicio);
+            std::cerr << "Message_recv(): recv FAILED on fd "<< sockfd << " bytes_recv: " << bytes_recv << "\n";
+            return -1;
+        }
+
+        if(bytes_recv == 0){
+            std::cout << "\n\n####### Erro: conexao fechada" << std::endl;
             free(buffer_socket_inicio);
             std::cerr << "Message_recv(): recv FAILED on fd "<< sockfd << " bytes_recv: " << bytes_recv << "\n";
             return -1;
