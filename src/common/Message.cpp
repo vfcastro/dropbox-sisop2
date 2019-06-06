@@ -99,6 +99,7 @@ int Message_recv(Message *msg, int sockfd) {
     // std::cout << "Message_recv(): START on fd " << sockfd << "\n";
     Message *pacote;
     void *buffer_socket;
+    void *buffer_socket_inicio;
 
     if((pacote = (Message *)malloc(sizeof(Message))) == NULL){
         std::cerr << "Message_recv(): ERROR malloc pacote\n";
@@ -108,6 +109,7 @@ int Message_recv(Message *msg, int sockfd) {
         std::cerr << "Message_recv(): ERROR malloc buffer_socket\n";
     }
 
+    buffer_socket_inicio = buffer_socket;
 
     int bytes_recv = -1;
 
@@ -115,12 +117,14 @@ int Message_recv(Message *msg, int sockfd) {
 
     // Copia o que tem no buffer geral antes de ler no socket
     if(curr_size_buffer_geral > sizeof(Message)){
+        std::cout << "\n\n####### buff geral > sizeof(message): " << curr_size_buffer_geral << std::endl;
         memcpy(buffer_socket, buffer_geral, sizeof(Message));
         curr_size_buffer_geral -= sizeof(Message);
         contador_bytes_recebidos = sizeof(Message);
 
         memcpy(buffer_geral, (buffer_geral+sizeof(Message)), curr_size_buffer_geral);
     }else{
+        std::cout << "\n\n#######  buffer message : " << curr_size_buffer_geral << std::endl;
         memcpy(buffer_socket, buffer_geral, curr_size_buffer_geral);
         curr_size_buffer_geral = 0;
         bzero(buffer_geral, MAX_UNREAD_BYTES);
@@ -129,38 +133,51 @@ int Message_recv(Message *msg, int sockfd) {
     // Enquanto nao recebe um pacote completo, vai lendo do socket. Quando completar uma mensagem inteira, retorna
     // Se receber mais que uma mensagem inteira, guarda no buffer_geral (global)
     while(contador_bytes_recebidos < sizeof(Message)){
+        std::cout << "\n\n#######  entrando no while do recv" << std::endl;
         bytes_recv = read(sockfd, buffer_socket, sizeof(Message));
         
         if(bytes_recv == -1){
-            free(buffer_socket);
+            std::cout << "\n\n####### linha 134 free" << std::endl;
+            free(buffer_socket_inicio);
             std::cerr << "Message_recv(): recv FAILED on fd "<< sockfd << " bytes_recv: " << bytes_recv << "\n";
             return -1;
         }
 
         contador_bytes_recebidos += bytes_recv;
-            
+        
+        std::cout << "\n\n####### linha 146 meio while: contador bytes: " << contador_bytes_recebidos << std::endl;
+
         if(contador_bytes_recebidos == sizeof(Message)){
             memcpy((Message *)pacote, buffer_socket, sizeof(Message));
-            free(buffer_socket);
+            std::cout << "\n\n####### linha 149 free - recebeu == size message" << std::endl;
+            free(buffer_socket_inicio);
             break;
 
         }else if(contador_bytes_recebidos > sizeof(Message)){
             int restante = contador_bytes_recebidos - sizeof(Message);
+            std::cout << "\n\n#######  restante: " << restante << std::endl;            
 
-            memcpy((Message *)pacote, buffer_socket, sizeof(Message));
-            buffer_socket += sizeof(Message);
+            memcpy((Message *)pacote, buffer_socket_inicio, sizeof(Message));
+            
+            std::cout << "\n\n#######  consegui copiar para o pacote: " << std::endl; 
 
-            memcpy(buffer_geral, buffer_socket, restante);
+            memcpy(buffer_geral, buffer_socket_inicio + sizeof(Message), restante);
             curr_size_buffer_geral += restante;
-
-            free(buffer_socket);
+            std::cout << "\n\n####### linha 157 free" << std::endl;
+            free(buffer_socket_inicio);
             break;
         }
 
+        sleep(100);
+
         buffer_socket += bytes_recv;
+        std::cout << "\n\n#######  fim no while do recv" << std::endl;
     }
+    
+    std::cout << "\n\n#######  fora do while do recv" << std::endl;
 
     Message_unmarshall(msg, pacote);
+    std::cout << "\n\n####### linha 166 free depois unmarshall" << std::endl;
     free(pacote);
         
     std::cout << "\n\n\nMensagem Recebida on fd " << sockfd << "\n";
