@@ -106,7 +106,6 @@ int Message_recv(Message *msg, int sockfd) {
         bzero(buffer_geral, MAX_UNREAD_BYTES);
     }
 
-/home/grad/jcazeredo/Desktop/dropbox-sisop2-master/bin/./client jc localhost 8008
     // Enquanto nao recebe um pacote completo, vai lendo do socket. Quando completar uma mensagem inteira, retorna
     // Se receber mais que uma mensagem inteira, guarda no buffer_geral (global)
     while(contador_bytes_recebidos < sizeof(Message)){
