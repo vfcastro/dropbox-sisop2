@@ -96,6 +96,9 @@ int Message_send(Message *msg, int sockfd) {
 
 int Message_recv(Message *msg, int sockfd) {
     // std::cout << "Message_recv(): START on fd " << sockfd << "\n";
+    
+    std::cout << "\n\n####### Iniciando Recebimento de um pacote\n";
+
     Message *pacote;
     void *buffer_socket;
     void *buffer_socket_inicio;
@@ -116,18 +119,26 @@ int Message_recv(Message *msg, int sockfd) {
 
     // Copia o que tem no buffer geral antes de ler no socket
     if(curr_size_buffer_geral > sizeof(Message)){
-        std::cout << "\n\n####### buff geral > sizeof(message): " << curr_size_buffer_geral << std::endl;
+        std::cout << "\n\n####### Tamanho Buffer Geral igual sizeof(message): " << curr_size_buffer_geral << sizeof(Message) << std::endl;
         memcpy(buffer_socket_inicio, buffer_geral, sizeof(Message));
         curr_size_buffer_geral -= sizeof(Message);
         
+        buffer_socket += sizeof(Message);
+
         // Entra no while tendo lido algo já
         contador_bytes_recebidos = sizeof(Message);
 
         memcpy(buffer_geral, (buffer_geral+sizeof(Message)), curr_size_buffer_geral);
+
+        std::cout << "\n\n####### Copia no buffer_socket uma mensagem inteira e move no buffer geral\n";
+        std::cout << "####### contador_bytes_recebidos: " << contador_bytes_recebidos << "\n";
+        std::cout << "####### curr_size_buffer_geral: " << curr_size_buffer_geral << "\n";
+
     }else{
         // Se o buffer geral tiver tamanho igual ou menor de uma mensagem
-        std::cout << "\n\n#######  buffer message : " << curr_size_buffer_geral << std::endl;
+        std::cout << "\n\n#######  Tamanho Buffer Geral: " << curr_size_buffer_geral << std::endl;
         memcpy(buffer_socket_inicio, buffer_geral, curr_size_buffer_geral);
+        buffer_socket += curr_size_buffer_geral;
         
         // Entra no while tendo lido algo já
         contador_bytes_recebidos = curr_size_buffer_geral;
@@ -135,7 +146,15 @@ int Message_recv(Message *msg, int sockfd) {
         curr_size_buffer_geral = 0;
 
         bzero(buffer_geral, MAX_UNREAD_BYTES);
+        std::cout << "\n\n####### Copia no buffer_socket tudo que tem no buffer geral\n";
+        std::cout << "####### contador_bytes_recebidos: " << contador_bytes_recebidos << "\n";
+        std::cout << "####### curr_size_buffer_geral: " << curr_size_buffer_geral << "\n";
     }
+
+    std::cout << "\n\n####### Antes do while\n";
+    std::cout << "####### contador_bytes_recebidos: " << contador_bytes_recebidos << "\n";
+    std::cout << "####### curr_size_buffer_geral: " << curr_size_buffer_geral << "\n";
+        
 
     // Enquanto nao recebe um pacote completo, vai lendo do socket. Quando completar uma mensagem inteira, retorna
     // Se receber mais que uma mensagem inteira, guarda no buffer_geral (global)
@@ -152,15 +171,30 @@ int Message_recv(Message *msg, int sockfd) {
 
         contador_bytes_recebidos += bytes_recv;
         
-        std::cout << "\n\n####### linha 146 meio while: contador bytes: " << contador_bytes_recebidos << std::endl;
+        std::cout << "\n\n####### Meio do While\n";
+        std::cout << "####### contador_bytes_recebidos: " << contador_bytes_recebidos << "\n";
+        std::cout << "####### curr_size_buffer_geral: " << curr_size_buffer_geral << "\n";
 
         if(contador_bytes_recebidos == sizeof(Message)){
+            std::cout << "\n\n####### Bytes Recebidos == Mensagem\n";
+            std::cout << "####### contador_bytes_recebidos: " << contador_bytes_recebidos << "\n";
+            std::cout << "####### curr_size_buffer_geral: " << curr_size_buffer_geral << "\n";
+
+
             memcpy((Message *)pacote, buffer_socket_inicio, sizeof(Message));
             std::cout << "\n\n####### linha 149 free - recebeu == size message" << std::endl;
             free(buffer_socket_inicio);
+            
+            std::cout << "\n\n####### Guardou no Pacote\n";
+            std::cout << "####### contador_bytes_recebidos: " << contador_bytes_recebidos << "\n";
+            std::cout << "####### curr_size_buffer_geral: " << curr_size_buffer_geral << "\n";
             break;
 
         }else if(contador_bytes_recebidos > sizeof(Message)){
+            std::cout << "\n\n####### Bytes Recebidos > Mensagem\n";
+            std::cout << "####### contador_bytes_recebidos: " << contador_bytes_recebidos << "\n";
+            std::cout << "####### curr_size_buffer_geral: " << curr_size_buffer_geral << "\n";
+
             int restante = contador_bytes_recebidos - sizeof(Message);
             std::cout << "\n\n#######  restante: " << restante << std::endl;            
 
@@ -172,9 +206,13 @@ int Message_recv(Message *msg, int sockfd) {
             curr_size_buffer_geral += restante;
             std::cout << "\n\n####### linha 157 free" << std::endl;
             free(buffer_socket_inicio);
+
+            std::cout << "\n\n####### Guardou parte no Pacote e Restante no Buffer Geral\n";
+            std::cout << "####### contador_bytes_recebidos: " << contador_bytes_recebidos << "\n";
+            std::cout << "####### curr_size_buffer_geral: " << curr_size_buffer_geral << "\n";
             break;
         }
-        
+
         buffer_socket += bytes_recv;
         std::cout << "\n\n#######  fim no while do recv" << std::endl;
     }
@@ -184,12 +222,18 @@ int Message_recv(Message *msg, int sockfd) {
     Message_unmarshall(msg, pacote);
     std::cout << "\n\n####### linha 166 free depois unmarshall" << std::endl;
     free(pacote);
-        
+
     std::cout << "\n\n\nMensagem Recebida on fd " << sockfd << "\n";
     std::cout << "msg.type: " << msg->type << "\n";
     std::cout << "msg.seqn: " << msg->seqn << "\n";
     std::cout << "msg.username: " << msg->username << "\n";
     std::cout << "msg.payload: " << msg->payload << "\n";
+
+    if(msg->type > 15 || msg->type < 0){
+           
+        return -1;
+        exit(0);
+    }
 
 	//free(buffer_socket);
     // std::cout << "Message_recv(): END on fd " << sockfd << "\n";
