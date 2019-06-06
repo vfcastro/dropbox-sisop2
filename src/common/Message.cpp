@@ -8,11 +8,17 @@
 #include "../../include/common/Message.h"
 
 void *buffer_geral = (void *)malloc(MAX_UNREAD_BYTES);
+
 int curr_size_buffer_geral = 0;
 
 Message* Message_create(unsigned int type, unsigned int seqn, const char *username, const char *payload) {
 	// std::cout << "Message_create(): START\n";
-	Message *msg = (Message*) malloc(sizeof(Message));
+	Message *msg;
+
+    if((msg = (Message*)malloc(sizeof(Message))) == NULL){
+        std::cerr << "Message_create(): ERROR malloc msg\n";
+    }
+
 	msg->type = type;
 	msg->seqn = seqn;
 	memcpy((void*)msg->username,(void*)username, MAX_USERNAME_SIZE);
@@ -64,10 +70,15 @@ void Message_marshall(Message *msg_destino, Message *pacote_recebido) {
 
 int Message_send(Message *msg, int sockfd) {
     // std::cout << "Message_send(): START on fd " << sockfd << "\n";
-    Message *buffer_socket = (Message *) malloc(sizeof(Message));
+    Message *buffer_socket;
+
+    if((buffer_socket = (Message*)malloc(sizeof(Message))) == NULL){
+        std::cerr << "Message_send(): ERROR malloc msg\n";
+    }
+
     int bytes_sent;
     
-    Message_marshall(msg,buffer_socket);
+    Message_marshall(msg, buffer_socket);
     if((bytes_sent = send(sockfd,(void*)buffer_socket,sizeof(Message),0)) != sizeof(Message)) {
         std::cerr << "Message_send(): send FAILED on fd " << sockfd << "\n";
         return -1;
@@ -86,8 +97,17 @@ int Message_send(Message *msg, int sockfd) {
 
 int Message_recv(Message *msg, int sockfd) {
     // std::cout << "Message_recv(): START on fd " << sockfd << "\n";
-    Message *pacote = (Message *)malloc(sizeof(Message));
-    void *buffer_socket = (void *)malloc(MAX_UNREAD_BYTES);
+    Message *pacote;
+    void *buffer_socket;
+
+    if((pacote = (Message *)malloc(sizeof(Message))) == NULL){
+        std::cerr << "Message_recv(): ERROR malloc pacote\n";
+    }
+
+    if((buffer_socket = (void *)malloc(MAX_UNREAD_BYTES)) == NULL){
+        std::cerr << "Message_recv(): ERROR malloc buffer_socket\n";
+    }
+
 
     int bytes_recv = -1;
 

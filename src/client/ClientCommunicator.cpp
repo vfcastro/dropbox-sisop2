@@ -144,7 +144,12 @@ void* ClientCommunicator_receive(void *cc) {
 	// std::cout << "ClientCommunicator_receive(): STARTED thread " << pthread_self() << "\n";
 	// std::cout << "ClientCommunicator_receive(): WAITING for msg on fd " << c->recvsockfd << "\n";
 
-    Message *msg = (Message*)malloc(sizeof(Message));
+    Message *msg;
+    
+    if((msg = (Message*)malloc(sizeof(Message))) == NULL){
+    	std::cerr << "ClientCommunicator_receive(): ERROR malloc msg\n";
+    }
+
     while(1) {
 		Message_recv(msg, c->recvsockfd);
         ClientProcessor_dispatch(c,msg);
