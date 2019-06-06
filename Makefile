@@ -21,7 +21,7 @@ client:
 
 common:
 	mkdir -p $(BUILD_DIR)
-	g++ -g -c $(COMMON_SCR)*.cpp -lpthread
+	g++ -g -c $(COMMON_SCR)*.cpp -lpthread -std=c++11
 	mv *.o $(BUILD_DIR)
 
 test:
