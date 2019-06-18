@@ -24,6 +24,7 @@ common:
 	g++ -g -c $(COMMON_SCR)*.cpp -lpthread -std=c++11
 	mv *.o $(BUILD_DIR)
 
+.PHONY: test
 test:
 	mkdir -p $(TEST_DIR)/server
 	mkdir -p $(TEST_DIR)/client-session1
@@ -32,6 +33,8 @@ test:
 	cp $(BIN_DIR)/client $(TEST_DIR)/client-session1
 	cp $(BIN_DIR)/client $(TEST_DIR)/client-session2
 
+	sh $(TEST_DIR)/test1.sh
+
 clean:
-	rm -rf $(BIN_DIR)* $(BUILD_DIR) $(TEST_DIR)
+	rm -rf $(BIN_DIR)* $(BUILD_DIR) $(TEST_DIR)/client* $(TEST_DIR)/server*
 	clear

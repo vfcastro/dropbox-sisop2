@@ -152,7 +152,6 @@ void* ClientCommunicator_receive(void *cc) {
     }
 
     while(Message_recv(msg, c->recvsockfd) != -1) {
-		Message_recv(msg, c->recvsockfd);
         ClientProcessor_dispatch(c,msg);
     }
 

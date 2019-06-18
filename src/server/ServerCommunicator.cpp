@@ -119,6 +119,7 @@ void* ServerCommunicator_accept(void* sc) {
 			s->threadConnId.insert(std::pair<pthread_t,int>(pthread_self(),s->connectionId));
 			
 			//tenta criar uma sessao
+			pthread_mutex_lock(&s->userSessionsLock);
 			if(s->userSessions.insert(std::pair<std::string,std::pair<int,int> >(msg->username,std::pair<int,int>(s->connectionId,0))).second == false) {
 				//ja existia pelo uma sessão
 				//checa se o segundo slot de sessao esta vazio
@@ -132,6 +133,7 @@ void* ServerCommunicator_accept(void* sc) {
 					std::cerr<<"ServerCommunicator_accept(): SESSIONS LIMIT EXCEEDED\n";
 				}
 			}
+			pthread_mutex_unlock(&s->userSessionsLock);
 					
 
 			pthread_mutex_unlock(&s->connectionIdLock);

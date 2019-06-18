@@ -15,14 +15,14 @@ void ClientInterface_start(ClientCommunicator *cc) {
 	std::string command;
 
 	while(!exit){
-		std::cout<< "Commands Available:"<<std::endl;
+		/*std::cout<< "Commands Available:"<<std::endl;
 		std::cout<< "\tupload [filepath]"<<std::endl;
 		std::cout<< "\tdownload [filepath]"<<std::endl;
 		std::cout<< "\tdelete [filepath]"<<std::endl;
 		std::cout<< "\tlist_server"<<std::endl;
 		std::cout<< "\tlist_client"<<std::endl;
 		std::cout<< "\texit"<<std::endl;
-		std::cout << "#: ";
+		std::cout << "#: "; */
 		std::getline(std::cin,command);
 		if(!command.empty())
 			ClientInterface_command(command, &exit, cc);
