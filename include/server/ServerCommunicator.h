@@ -9,6 +9,7 @@
 #include <queue>	// std::queue
 #include <list>		// std::tuple
 #include "../../include/common/Message.h"
+#include "../../include/server/ReplicaManager.h"
 using namespace std;
 
 struct ServerCommunicator {
@@ -39,10 +40,13 @@ struct ServerCommunicator {
   //mapeamento connectionId -> fila de msgs para envio ao cliente
   std::map<int,std::queue<Message*>> sendQueue;
   pthread_mutex_t sendQueueLock;
+
+  //ReplicaManager do servidor
+  struct ReplicaManager *rm;
 	  
 };
 
-void ServerCommunicator_init(ServerCommunicator *sc, unsigned int port, unsigned int backlog);
+void ServerCommunicator_init(ServerCommunicator *sc, ReplicaManager *rm, unsigned int port, unsigned int backlog);
 void ServerCommunicator_start(ServerCommunicator *sc);
 void* ServerCommunicator_listen(void* sc);
 void* ServerCommunicator_accept(void* sc);

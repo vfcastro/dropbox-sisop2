@@ -6,10 +6,12 @@
 #include <netinet/in.h>
 #include "../../include/common/Message.h"
 #include "../../include/server/ServerCommunicator.h"
+#include "../../include/server/ReplicaManager.h"
 #include "../../include/server/ServerProcessor.h"
 
-void ServerCommunicator_init(ServerCommunicator *sc, unsigned int port, unsigned int backlog) {
+void ServerCommunicator_init(ServerCommunicator *sc, ReplicaManager *rm, unsigned int port, unsigned int backlog) {
 	// std::cout << "ServerCommunicator_init(): START\n";
+	sc->rm = rm;
 	sc->port = port;
 	sc->backlog = backlog;
 	sc->connectionId = 0;

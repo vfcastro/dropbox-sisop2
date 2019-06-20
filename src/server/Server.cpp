@@ -22,9 +22,8 @@ int main (int argc, char **argv)
 	unsigned int backlog = 200;
 
 	ServerCommunicator sc;
-	ServerCommunicator_init(&sc,port,backlog);
-
 	ReplicaManager rm;
+	ServerCommunicator_init(&sc,&rm,port,backlog);
 	ReplicaManager_init(&rm,&sc,primary,hosts_and_ports);
 
 	// std::cout << "main(): ServerCommunicator_init() finished\n";

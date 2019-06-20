@@ -47,6 +47,7 @@ void* ReplicaManager_connect(void* rm) {
     std:cout << "ReplicaManager_connect\n";
     ReplicaManager *r = (ReplicaManager*)rm;
 
+    // conecta aos demais servers
     for (std::vector<std::pair<string,unsigned int>>::iterator it = r->backups.begin() ; it != r->backups.end(); ++it)
     {
         int connected = 0;
@@ -63,4 +64,7 @@ void* ReplicaManager_connect(void* rm) {
                 sleep(1);            
         }
     }
+
+
+
 }
