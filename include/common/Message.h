@@ -23,6 +23,7 @@
 #define GET_SYNC_DIR 13
 #define END_SYNC 14
 #define USER_EXIT 15
+#define HEARTBEAT 16
 
 
 struct Message {

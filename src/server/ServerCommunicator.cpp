@@ -109,7 +109,9 @@ void* ServerCommunicator_accept(void* sc) {
 
 	// protocolo de abertura de conexao
 	if(Message_recv(msg,sockfd) != -1) {
-		if(msg->type == OPEN_SEND_CONN) {
+		switch (msg->type) 
+		{
+		case OPEN_SEND_CONN:
 			// std::cout << "ServerCommunicator_accept(): read msg OPEN_SEND_CONN\n";		
 
 			/* SECAO CRITICA */
@@ -150,26 +152,33 @@ void* ServerCommunicator_accept(void* sc) {
 			}
 			else
 				std::cerr << "ServerCommunicator_accept(): ERROR sent reply OK\n";
-		}
-		else 
-			if (msg->type == OPEN_RECV_CONN) {
-				// std::cout << "ServerCommunicator_accept(): read msg OPEN_RECV_CONN\n";		
-				msg->type = OK;
-				if(Message_send(msg,sockfd) != -1) {
-					// std::cout << "ServerCommunicator_accept(): sent reply OK\n";
-					// thread deve aguardar por msgs na fila identificada pelo connectionId
-					// que vem do campo seqn da msg
-					std::queue<Message*> queue;
-					pthread_mutex_lock(&s->sendQueueLock);
-					s->sendQueue.insert(std::pair<int,std::queue<Message*>>(msg->seqn,queue));
-					pthread_mutex_unlock(&s->sendQueueLock);
-					ServerCommunicator_send(s,sockfd,msg->seqn);
-				}
-				else
-					std::cerr << "ServerCommunicator_accept(): ERROR sent reply OK\n";
+					
+			break;
+
+		case OPEN_RECV_CONN:
+			// std::cout << "ServerCommunicator_accept(): read msg OPEN_RECV_CONN\n";		
+			msg->type = OK;
+			if(Message_send(msg,sockfd) != -1) {
+				// std::cout << "ServerCommunicator_accept(): sent reply OK\n";
+				// thread deve aguardar por msgs na fila identificada pelo connectionId
+				// que vem do campo seqn da msg
+				std::queue<Message*> queue;
+				pthread_mutex_lock(&s->sendQueueLock);
+				s->sendQueue.insert(std::pair<int,std::queue<Message*>>(msg->seqn,queue));
+				pthread_mutex_unlock(&s->sendQueueLock);
+				ServerCommunicator_send(s,sockfd,msg->seqn);
 			}
-			else 
-				std::cerr << "ServerCommunicator_accept(): ERROR recv msg type not OPEN_SEND_CONN nor OPEN_RECV_CONN\n";
+			else
+				std::cerr << "ServerCommunicator_accept(): ERROR sent reply OK\n";
+
+		case HEARTBEAT:
+			break;	
+		
+
+		default:
+			std::cerr << "ServerCommunicator_accept(): msg type not valid!\n";
+			break;
+		}			
 	}
 	else 
 		std::cerr << "ServerCommunicator_accept(): ERROR recv msg\n";

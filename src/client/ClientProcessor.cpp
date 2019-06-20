@@ -51,7 +51,7 @@ void ClientProcessor_onCloseWrite(ClientCommunicator *cc, Message *msg) {
 	//Message_send(msg,sockfd);
 
 	//Preenche o arquivo conforme recebimento das mensagens
-	while(Message_recv(msg,cc->recvsockfd) != -1) {
+	while(Message_recv(msg,ClientCommunicator_getRecvSocket(cc)) != -1) {
 	    // Verifica se tipo = OK, se sim, para de escrever
 	    if(msg->type == END){
 	        break;
@@ -82,7 +82,7 @@ void ClientProcessor_receivePropagate(ClientCommunicator *cc, Message *msg) {
 	cc->syncFiles.insert(msg->payload);
 
    	// Começa o recebimento do arquivo
-   	if(FileManager_receiveFile(path, msg, cc->recvsockfd) == -1){
+   	if(FileManager_receiveFile(path, msg, ClientCommunicator_getRecvSocket(cc)) == -1){
       	std::cerr<<"ClientProcessor_receivePropagate(): Error Receive File\n";
    	}
 

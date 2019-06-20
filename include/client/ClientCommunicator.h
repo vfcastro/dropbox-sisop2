@@ -17,15 +17,21 @@ struct ClientCommunicator {
 
   //int pauseSync = 0;
   pthread_mutex_t syncFilesLock;
+
+  //lock para acesso aos sockets
+  pthread_mutex_t sockfdLock;
+
   //conjunto de arquivos sendo sincronizados no momento
 	std::set<std::string> syncFiles;
 
  };
 
-void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::string server, unsigned int port);
+void ClientCommunicator_init(ClientCommunicator *cc, std::string username);
 void ClientCommunicator_start(ClientCommunicator *cc);
 void* ClientCommunicator_receive(void *cc);
 void ClientCommunicator_openSession(ClientCommunicator *cc);
+int ClientCommunicator_getSendSocket(ClientCommunicator *cc);
+int ClientCommunicator_getRecvSocket(ClientCommunicator *cc);
 
 
 #endif

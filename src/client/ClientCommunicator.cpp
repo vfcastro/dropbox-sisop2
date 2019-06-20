@@ -9,75 +9,24 @@
 #include "../../include/client/ClientProcessor.h"
 #include "../../include/client/ClientSync.h"
 
-void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::string server, unsigned int port) {
+void ClientCommunicator_init(ClientCommunicator *cc, std::string username) {
 	// std::cout << "ClientCommunicator_init(): START\n";
 
 	//cc->pauseSync = 0;
 	pthread_mutex_init(&cc->syncFilesLock, NULL);
+	pthread_mutex_init(&cc->sockfdLock,NULL);
 
 	if(username.size() > MAX_USERNAME_SIZE) {
 		std::cerr << "ClientCommunicator_init(): username too long. Max" << MAX_USERNAME_SIZE << "characters\n";
 		exit(-1);
-	}
-		
+	}		
 	memcpy((void*)cc->username,(void*)std::string(username).c_str(),MAX_USERNAME_SIZE);
-	cc->server = std::string(server);
-	cc->port = port;
-	
-	struct hostent *sv = gethostbyname(cc->server.c_str());
-
-	if (sv == NULL) {
-        std::cerr << "ClientCommunicator_init(): ERROR, no such host\n";
-        exit(-1);
-    }
-   
-	int sendsockfd; 
-    if ((sendsockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-        std::cerr << "ClientCommunicator_init(): ERROR opening send socket\n";
-		exit(-1);
-	}
-
-	int recvsockfd; 
-    if ((recvsockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-        std::cerr << "ClientCommunicator_init(): ERROR opening recv socket\n";
-		exit(-1);
-	}
-
-	int enable = 1;
-	if (setsockopt(sendsockfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
-	    std::cout << "ClientCommunicator_init(): setsockopt(SO_REUSEADDR) failed\n";
-	    exit(-1);
-	}
- 
- 	if (setsockopt(recvsockfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
- 	    std::cout << "ClientCommunicator_init(): setsockopt(SO_REUSEADDR) failed\n";
- 	    exit(-1);
- 	}
-
-	struct sockaddr_in serv_addr; 
-	serv_addr.sin_family = AF_INET;     
-	serv_addr.sin_port = htons(cc->port);    
-	serv_addr.sin_addr = *((struct in_addr *)sv->h_addr);
-	bzero(&(serv_addr.sin_zero), 8);
-    
-	if (connect(sendsockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
-        std::cerr << "ClientCommunicator_init(): error connecting to send socket\n";
-		exit(-1);
-	}
-
-	if (connect(recvsockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
-        std::cerr << "ClientCommunicator_init(): error connecting to recv socket\n";
-		exit(-1);
-	}
-
-	cc->sendsockfd = sendsockfd;
-	cc->recvsockfd = recvsockfd;
 
 	// Solicita abertura de conexao de envio
 	Message *msg = Message_create(OPEN_SEND_CONN,0,std::string(cc->username).c_str(),std::string().c_str());
-	if(Message_send(msg,cc->sendsockfd) != -1) {
+	if(Message_send(msg,ClientCommunicator_getSendSocket(cc)) != -1) {
 		// std::cout << "ClientCommunicator_init(): sent msg OPEN_SEND_CONN\n";
-	    if(Message_recv(msg,cc->sendsockfd) != -1) { 
+	    if(Message_recv(msg,ClientCommunicator_getSendSocket(cc)) != -1) { 
 	    	if(msg->type == OK) {
 	    		std::cout << "";
 				// std::cout << "ClientCommunicator_init(): recv OK for OPEN_SEND_CONN\n";
@@ -102,7 +51,7 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username, std::
 	int connectionId = msg->seqn;
 	// std::cout << "ClientCommunicator_init(): CONNECTION ID " << connectionId << "\n";
 	msg = Message_create(OPEN_RECV_CONN,connectionId,std::string(cc->username).c_str(),std::string().c_str());
-	if(Message_send(msg,cc->recvsockfd) != -1) {
+	if(Message_send(msg,ClientCommunicator_getRecvSocket(cc)) != -1) {
 		// std::cout << "ClientCommunicator_init(): sent msg OPEN_RECV_CONN\n";
 	    if(Message_recv(msg,cc->recvsockfd) != -1) { 
 	    	if(msg->type == OK){
@@ -151,7 +100,7 @@ void* ClientCommunicator_receive(void *cc) {
     	pthread_exit(NULL);
     }
 
-    while(Message_recv(msg, c->recvsockfd) != -1) {
+    while(Message_recv(msg, ClientCommunicator_getRecvSocket(c)) != -1) {
         ClientProcessor_dispatch(c,msg);
     }
 
@@ -166,13 +115,13 @@ void ClientCommunicator_openSession(ClientCommunicator *cc) {
 	// std::cout << "ClientCommunicator_openSession(): START\n";
 
 	Message *msg = Message_create(OPEN_SESSION,0,std::string(cc->username).c_str(),std::string().c_str());
-	if(Message_send(msg,cc->sendsockfd) == -1){
+	if(Message_send(msg,ClientCommunicator_getSendSocket(cc)) == -1){
 		std::cerr << "ClientCommunicator_openSession(): ERROR sending OPEN_SESSION\n";
 		exit(-1);
 	}
 	// std::cout << "ClientCommunicator_openSession(): sent msg OPEN_SESSION\n";
 
-	if(Message_recv(msg,cc->sendsockfd) == -1) {
+	if(Message_recv(msg,ClientCommunicator_getSendSocket(cc)) == -1) {
 		std::cerr << "ClientCommunicator_openSession(): ERROR recv OK for OPEN_SESSION\n";
 		exit(-1);
 	}
@@ -187,6 +136,25 @@ void ClientCommunicator_openSession(ClientCommunicator *cc) {
 	// std::cout << "ClientCommunicator_openSession(): END\n";
 }
 
+int ClientCommunicator_getSendSocket(ClientCommunicator *cc) {
+	pthread_mutex_lock(&cc->sockfdLock);
+
+	int sendsockfd = cc->sendsockfd;
+
+	pthread_mutex_unlock(&cc->sockfdLock);
+
+	return sendsockfd;
+}
+
+int ClientCommunicator_getRecvSocket(ClientCommunicator *cc) {
+	pthread_mutex_lock(&cc->sockfdLock);
+
+	int recvsockfd = cc->recvsockfd;
+
+	pthread_mutex_unlock(&cc->sockfdLock);
+
+	return recvsockfd;
+}
 
 
 

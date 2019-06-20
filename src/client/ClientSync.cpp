@@ -149,15 +149,14 @@ void* ClientSync_watch(void *cs) {
 
 void ClientSync_sync(ClientSync *cs) {
 	std::cout << "GET_SYNC_DIR: Sincronizando arquivos....\n";
-	int socket = cs->cc->sendsockfd;
 
 	Message *msg = Message_create(GET_SYNC_DIR, 0, cs->cc->username, std::string().c_str());
 
 	// Envia Requisição
-	Message_send(msg, socket);
+	Message_send(msg, ClientCommunicator_getSendSocket(cs->cc));
 
 	// Aguarda Ok ou aviso que nao ha arquivos
-	Message_recv(msg, socket);
+	Message_recv(msg, ClientCommunicator_getSendSocket(cs->cc));
 	if(msg->type == NOK){
 		return;
 	}
@@ -166,21 +165,21 @@ void ClientSync_sync(ClientSync *cs) {
 	int type = 0;
 	// Recebe nome do arquivo
 
-	while(Message_recv(msg, socket) != -1){
+	while(Message_recv(msg, ClientCommunicator_getSendSocket(cs->cc)) != -1){
 
 		type = msg->type;
 		std::string path(cs->sync_dir);
 		path.append("/");
 		path.append(msg->payload);
 
-		receive_result = FileManager_receiveFile(path, msg, cs->cc->sendsockfd);
+		receive_result = FileManager_receiveFile(path, msg, ClientCommunicator_getSendSocket(cs->cc));
 
 		if(receive_result == -1){
 			std::cout<<"ClientSync_sync(): Error Send File\n";
 			break;
 		}
 
-		Message_recv(msg, socket);
+		Message_recv(msg, ClientCommunicator_getSendSocket(cs->cc));
 		if(msg->type == END_SYNC){
 			break;
 		}
@@ -198,12 +197,12 @@ void ClientSync_onCloseWrite(ClientSync *cs, char *name) {
 	Message *msg = Message_create(FILE_CLOSE_WRITE,0,cs->cc->username,(const char *)name);
 
 	// Envia Requisição
-	Message_send(msg,cs->cc->sendsockfd);
+	Message_send(msg,ClientCommunicator_getSendSocket(cs->cc));
 
 	// Aguarda Ok
-	Message_recv(msg,cs->cc->sendsockfd);
+	Message_recv(msg,ClientCommunicator_getSendSocket(cs->cc));
 
-	if(FileManager_sendFile(path, msg, cs->cc->sendsockfd) == -1){
+	if(FileManager_sendFile(path, msg, ClientCommunicator_getSendSocket(cs->cc)) == -1){
 		std::cout<<"ClientSync_onCloseWrite(): Error Send File\n";
 	}
 }
@@ -213,8 +212,8 @@ void ClientSync_onDelete(ClientSync *cs, char *name) {
 	path.append("/").append(name);
 	
 	Message *msg = Message_create(DELETE_FILE, 0, cs->cc->username, (const char *)name);
-	Message_send(msg,cs->cc->sendsockfd);
-	Message_recv(msg,cs->cc->sendsockfd);
+	Message_send(msg,ClientCommunicator_getSendSocket(cs->cc));
+	Message_recv(msg,ClientCommunicator_getSendSocket(cs->cc));
 
 }
 void ClientSync_onRename(ClientSync *cs, char *oldname, char* newname) {

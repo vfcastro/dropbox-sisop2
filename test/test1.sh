@@ -1,17 +1,22 @@
 CWD=`pwd`
 FILE=kubespray-2.10.3.zip
 
-cd $CWD/test/server
-nohup ./server 5000 &
-sleep 1
+cd $CWD/test/server1
+nohup ./server 5000 1 localhost 4999 &
+sleep 2
+
+cd $CWD/test/server2
+nohup ./server 4999 0 localhost 5000 &
+sleep 2
 
 cd $CWD/test/client-session1
 nohup ./client user1 localhost 5000 &
+sleep 2
 
 cd $CWD/test/client-session2
 nohup ./client user1 localhost 5000 &
+sleep 2
 
-sleep 3
 cd $CWD
 cp ./test/$FILE $CWD/test/client-session1/sync_dir_user1/
 

@@ -70,4 +70,7 @@
  - Abrir thread de interface
  - Comandos...
 
+@Frontend
+	- Listen socket para atualizar novo primario
+
  

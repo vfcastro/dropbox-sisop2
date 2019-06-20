@@ -114,10 +114,10 @@ void ClientInterface_upload(ClientCommunicator *cc, std::string filepath){
 
 	Message *msg = Message_create(UPLOAD_FILE_CMD, 0, cc->username, (const char *)filename.c_str());
 	// Envia msg dizendo que quer fazer upload
-	Message_send(msg, cc->sendsockfd);
+	Message_send(msg, ClientCommunicator_getSendSocket(cc));
 
 	// Aguarda um Ok do server
-	if(Message_recv(msg, cc->sendsockfd) == -1){
+	if(Message_recv(msg, ClientCommunicator_getSendSocket(cc)) == -1){
 		std::cerr << "ClientInterface_upload(): ERROR recv -1 ";
 	}
 
@@ -134,12 +134,12 @@ void ClientInterface_upload(ClientCommunicator *cc, std::string filepath){
 	while(bytes_recv){
 		// std::cout << "ClientSync_onCloseWrite(): read " << bytes_recv << " bytes from file " << filepath << "\n";
 		msg->seqn = bytes_recv;
-		Message_send(msg, cc->sendsockfd);
+		Message_send(msg, ClientCommunicator_getSendSocket(cc));
 		bytes_recv = read(f, msg->payload, MAX_PAYLOAD_SIZE);
 	}
 
 	msg->type = END;
-	Message_send(msg, cc->sendsockfd);
+	Message_send(msg, ClientCommunicator_getSendSocket(cc));
 
 	close(f);
 
@@ -151,10 +151,10 @@ void ClientInterface_download(ClientCommunicator *cc, std::string filename){
 
 	Message *msg = Message_create(DOWNLOAD_FILE_CMD, 0, cc->username, (const char *)filename.c_str());
 	// Envia msg dizendo que quer fazer download
-	Message_send(msg, cc->sendsockfd);
+	Message_send(msg, ClientCommunicator_getSendSocket(cc));
 
 	// Aguarda um Ok do server
-	if(Message_recv(msg, cc->sendsockfd) == -1){
+	if(Message_recv(msg, ClientCommunicator_getSendSocket(cc)) == -1){
 		std::cerr << "ClientInterface_download(): ERROR recv -1 ";
 	}
 
@@ -168,7 +168,7 @@ void ClientInterface_download(ClientCommunicator *cc, std::string filename){
 	}
 
 	//Preenche o arquivo conforme recebimento das mensagens
-	while(Message_recv(msg,cc->sendsockfd) != -1) {
+	while(Message_recv(msg,ClientCommunicator_getSendSocket(cc)) != -1) {
 		// Verifica se tipo = OK, se sim, para de escrever
 		if(msg->type == END){
 			break;
@@ -196,8 +196,8 @@ void ClientInterface_delete(ClientCommunicator *cc, std::string filename){
 	path.append(filename);
 	
 	Message *msg = Message_create(DELETE_FILE, 0, cc->username, filename.c_str());
-	Message_send(msg, cc->sendsockfd);
-	Message_recv(msg, cc->sendsockfd);
+	Message_send(msg, ClientCommunicator_getSendSocket(cc));
+	Message_recv(msg, ClientCommunicator_getSendSocket(cc));
 
 	int Removed = std::remove(path.c_str());
 
@@ -209,15 +209,15 @@ void ClientInterface_listServer(ClientCommunicator *cc){
 
 	Message *msg = Message_create(LIST_SERVER_CMD, 0, cc->username, "");
 	// Envia msg dizendo que quer lista
-	Message_send(msg, cc->sendsockfd);
+	Message_send(msg, ClientCommunicator_getSendSocket(cc));
 
 	// Aguarda um Ok do server
-	if(Message_recv(msg, cc->sendsockfd) == -1){
+	if(Message_recv(msg, ClientCommunicator_getSendSocket(cc)) == -1){
 		std::cerr << "ClientInterface_listServer(): ERROR recv -1 ";
 	}
 
 	// Cada pacote recebido é uma linha do "ls -l" executado no server
-	while(Message_recv(msg, cc->sendsockfd) != -1) {
+	while(Message_recv(msg, ClientCommunicator_getSendSocket(cc)) != -1) {
 		// Verifica se tipo = END, se sim, para de dar read
 		if(msg->type == END){
 			break;
@@ -293,21 +293,19 @@ void ClientInterface_listClient(ClientCommunicator *cc){
 void ClientInterface_exit(ClientCommunicator *cc){
 	// std::cout << "ClientInterface_exit(): START";
 	Message *msg = Message_create(USER_EXIT, 0, cc->username, "");
-	Message_send(msg,cc->sendsockfd);
+	Message_send(msg,ClientCommunicator_getSendSocket(cc));
 	exit(0);
 }
 
 void ClientInterface_getSyncDir(ClientCommunicator *cc){
 std::cout << "GET_SYNC_DIR: Sincronizando arquivos....\n";
-	int socket = cc->sendsockfd;
-
 	Message *msg = Message_create(GET_SYNC_DIR, 0, cc->username, std::string().c_str());
 
 	// Envia Requisição
-	Message_send(msg, socket);
+	Message_send(msg, ClientCommunicator_getSendSocket(cc));
 
 	// Aguarda Ok ou aviso que nao ha arquivos
-	Message_recv(msg, socket);
+	Message_recv(msg, ClientCommunicator_getSendSocket(cc));
 	if(msg->type == NOK){
 		return;
 	}
@@ -316,7 +314,7 @@ std::cout << "GET_SYNC_DIR: Sincronizando arquivos....\n";
 	int type = 0;
 	// Recebe nome do arquivo
 
-	while(Message_recv(msg, socket) != -1){
+	while(Message_recv(msg, ClientCommunicator_getSendSocket(cc)) != -1){
 
 		type = msg->type;
 
@@ -324,14 +322,14 @@ std::cout << "GET_SYNC_DIR: Sincronizando arquivos....\n";
 		path.append(cc->username).append("/");
 		path.append(msg->payload);
 
-		receive_result = FileManager_receiveFile(path, msg, cc->sendsockfd);
+		receive_result = FileManager_receiveFile(path, msg, ClientCommunicator_getSendSocket(cc));
 
 		if(receive_result == -1){
 			std::cout<<"ClientInterface_getSyncDir(): Error Send File\n";
 			break;
 		}
 
-		Message_recv(msg, socket);
+		Message_recv(msg, ClientCommunicator_getSendSocket(cc));
 		if(msg->type == END_SYNC){
 			break;
 		}

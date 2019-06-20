@@ -4,6 +4,7 @@
 #include "../../include/client/ClientCommunicator.h"
 #include "../../include/client/ClientInterface.h"
 #include "../../include/client/ClientSync.h"
+#include "../../include/client/ClientFrontend.h"
 
 int main (int argc, char **argv)
 {	
@@ -16,7 +17,8 @@ int main (int argc, char **argv)
 	// Inicia os módulos de conexão
 
 	ClientCommunicator cc;
-	ClientCommunicator_init(&cc,username,server,port);
+	ClientFrontend_init(&cc,server,port);
+	ClientCommunicator_init(&cc,username);
 	ClientCommunicator_start(&cc);
 	ClientCommunicator_openSession(&cc);
 
