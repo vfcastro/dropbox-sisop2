@@ -135,15 +135,20 @@ void* ServerCommunicator_accept(void* sc) {
 					msg->type = NOK;
 					Message_send(msg,sockfd);
 					std::cerr<<"ServerCommunicator_accept(): SESSIONS LIMIT EXCEEDED\n";
+					pthread_mutex_unlock(&s->userSessionsLock);
+					pthread_mutex_unlock(&s->connectionIdLock);
+					break;
 				}
 			}
-			pthread_mutex_unlock(&s->userSessionsLock);
-					
 
+			/* SE FOR PRIMARIO, ENVIA MSG PARA BACKUPS */
+			if(s->rm->primary == 1)
+				ReplicaManager_sendMessageToBackups(s,msg);
+			
+			
+			pthread_mutex_unlock(&s->userSessionsLock);
 			pthread_mutex_unlock(&s->connectionIdLock);
 			/* FINAL SECAO CRITICA */
-
-
 
 			// passa-se ao cliente o connId pelo campo seqn
 			msg->type = OK;
