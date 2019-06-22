@@ -78,7 +78,7 @@ int Message_send(Message *msg, int sockfd) {
     int bytes_sent;
     
     Message_marshall(msg, buffer_socket);
-    if((bytes_sent = send(sockfd,(void*)buffer_socket,sizeof(Message),0)) != sizeof(Message)) {
+    if((bytes_sent = send(sockfd,(void*)buffer_socket,sizeof(Message),MSG_NOSIGNAL)) != sizeof(Message)) {
         std::cerr << "Message_send(): send FAILED on fd " << sockfd << "\n";
         return -1;
     }
@@ -235,12 +235,6 @@ int Message_recv(Message *msg, int sockfd) {
     std::cout << "msg.seqn: " << msg->seqn << "\n";
     std::cout << "msg.username: " << msg->username << "\n";
     std::cout << "msg.payload: " << msg->payload << "\n";
-
-    if(msg->type > 15 || msg->type < 0){
-           
-        return -1;
-        exit(0);
-    }
 
 	//free(buffer_socket);
     // std::cout << "Message_recv(): END on fd " << sockfd << "\n";

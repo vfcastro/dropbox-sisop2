@@ -141,11 +141,6 @@ void* ServerCommunicator_accept(void* sc) {
 				}
 			}
 
-			/* SE FOR PRIMARIO, ENVIA MSG PARA BACKUPS */
-			if(s->rm->primary == 1)
-				ReplicaManager_sendMessageToBackups(s,msg);
-			
-			
 			pthread_mutex_unlock(&s->userSessionsLock);
 			pthread_mutex_unlock(&s->connectionIdLock);
 			/* FINAL SECAO CRITICA */
@@ -155,15 +150,18 @@ void* ServerCommunicator_accept(void* sc) {
 			msg->seqn = s->connectionId;
 			if(Message_send(msg,sockfd) != -1){
 				// std::cout << "ServerCommunicator_accept(): sent reply OK\n";
+
 				ServerCommunicator_receive(s,sockfd);
+			
 			}
 			else
 				std::cerr << "ServerCommunicator_accept(): ERROR sent reply OK\n";
-					
+
 			break;
 
 		case OPEN_RECV_CONN:
-			// std::cout << "ServerCommunicator_accept(): read msg OPEN_RECV_CONN\n";		
+			// std::cout << "ServerCommunicator_accept(): read msg OPEN_RECV_CONN\n";
+
 			msg->type = OK;
 			if(Message_send(msg,sockfd) != -1) {
 				// std::cout << "ServerCommunicator_accept(): sent reply OK\n";
@@ -174,6 +172,7 @@ void* ServerCommunicator_accept(void* sc) {
 				s->sendQueue.insert(std::pair<int,std::queue<Message*>>(msg->seqn,queue));
 				pthread_mutex_unlock(&s->sendQueueLock);
 				ServerCommunicator_send(s,sockfd,msg->seqn);
+
 			}
 			else
 				std::cerr << "ServerCommunicator_accept(): ERROR sent reply OK\n";

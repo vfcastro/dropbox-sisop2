@@ -65,6 +65,9 @@ void* ReplicaManager_connect(void* rm) {
                 sleep(1);            
         }
     }
+
+
+
 }
 
 void ReplicaManager_sendMessageToBackups(ServerCommunicator *sc, Message *msg) {
@@ -72,6 +75,7 @@ void ReplicaManager_sendMessageToBackups(ServerCommunicator *sc, Message *msg) {
     {   
         std::cout << "ReplicaManager_sendMessageToBackups: sending msg to " << it->first.first << ":" << it->first.second << " on socketfd " << it->second << "\n";
         Message_send(msg,it->second);
+        Message_recv(msg,it->second);
     }
 
 }
