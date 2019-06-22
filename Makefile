@@ -37,6 +37,9 @@ test:
 
 	sh $(TEST_DIR)/test1.sh
 
+test2:
+	sh $(TEST_DIR)/test2.sh
+
 clean:
 	rm -rf $(BIN_DIR)* $(BUILD_DIR) $(TEST_DIR)/client* $(TEST_DIR)/server*
 	clear

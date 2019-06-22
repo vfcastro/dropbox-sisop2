@@ -179,8 +179,20 @@ void* ServerCommunicator_accept(void* sc) {
 				std::cerr << "ServerCommunicator_accept(): ERROR sent reply OK\n";
 
 		case HEARTBEAT:
-			break;	
-		
+			ServerCommunicator_receiveFromServer(s, sockfd, HEARTBEAT, msg->seqn);
+			break;
+
+		case ELECTION:
+			ServerCommunicator_receiveFromServer(s, sockfd, ELECTION, msg->seqn);
+			break;
+
+		case ANSWER:
+			ServerCommunicator_receiveFromServer(s, sockfd, ANSWER, msg->seqn);
+			break;
+
+		case COORDINATOR:
+			ServerCommunicator_receiveFromServer(s, sockfd, COORDINATOR, msg->seqn);
+			break;
 
 		default:
 			std::cerr << "ServerCommunicator_accept(): msg type not valid!\n";
@@ -189,7 +201,6 @@ void* ServerCommunicator_accept(void* sc) {
 	}
 	else 
 		std::cerr << "ServerCommunicator_accept(): ERROR recv msg\n";
-	
 
 	free(msg);
 	close(sockfd);
@@ -199,6 +210,72 @@ void* ServerCommunicator_accept(void* sc) {
 	pthread_mutex_unlock(&s->acceptedThreadsLock);
 
 	// std::cout << "ServerCommunicator_accept(): ENDED thread " << pthread_self() << "\n"; 
+}
+
+void ServerCommunicator_receiveFromServer(ServerCommunicator *sc, int sockfd, int type_msg, int port){
+	Message *msg = (Message*) malloc(sizeof(Message));
+	
+	msg->type = type_msg;
+	msg->seqn = port;
+	
+	int flag_exit = 0;
+
+	while(!flag_exit){
+		
+		switch (msg->type){
+		
+		case HEARTBEAT:
+
+			// std::cerr << "ServerCommunicator_receiveFromServer(): Respondendo que ta vivo\n";
+			
+			break;
+
+		case ELECTION:
+			std::cerr << "ServerCommunicator_receiveFromServer(): Receive ELECTION from " << msg->seqn << "\n";
+
+			msg->type = OK;
+			if(Message_send(msg, sockfd) == -1){
+				std::cerr << "ServerCommunicator_receiveFromServer(): ERROR recv msg\n";
+				flag_exit = 1;
+				break;
+			}	
+
+			ReplicaManager_election(sc->rm);
+
+			break;
+
+		case ANSWER:
+			std::cerr << "ServerCommunicator_receiveFromServer(): Receive ANSWER from " << msg->seqn << "\n";
+
+			break;
+
+		case COORDINATOR:
+			std::cerr << "ServerCommunicator_receiveFromServer(): Receive COORDINATOR from " << msg->seqn << "\n";
+
+			ReplicaManager_updateLeader(sc->rm, msg->seqn);
+
+			break;
+
+		default:
+			std::cerr << "ServerCommunicator_receiveFromServer(): msg type not valid!\n";
+			flag_exit = 1;
+
+			break;
+		}
+
+		if(Message_recv(msg,sockfd) == -1){
+			std::cerr << "ServerCommunicator_receiveFromServer(): ERROR recv msg\n";
+			flag_exit = 1;
+			break;
+		}		
+	}
+
+	free(msg);
+	close(sockfd);
+
+	pthread_mutex_lock(&sc->acceptedThreadsLock);
+	sc->acceptedThreads.erase(pthread_self());
+	pthread_mutex_unlock(&sc->acceptedThreadsLock);
 }
 
 void ServerCommunicator_receive(ServerCommunicator *sc, int sockfd) {
@@ -238,7 +315,7 @@ void ServerCommunicator_send(ServerCommunicator *sc, int sockfd, int connectionI
 			// std::cout << "\n\n\n";
 
 			if(Message_send(msg, sockfd) == -1){
-				std::cerr << "ServerCommunicator_send() Error send msg!\n";
+				std::cerr << "ServerCommunicator_send(): Error send msg!\n";
 				ServerProcessor_exitCommand(sc,msg);
 				return;
 			}

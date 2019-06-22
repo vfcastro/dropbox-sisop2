@@ -13,6 +13,8 @@ struct ReplicaManager {
     std::string primary_host;
     unsigned int primary_port;
 
+    int elected;
+
     // map de host/porta e socket dos backups
     std::map<std::pair<std::string,unsigned int>,int> backups;
 
@@ -25,6 +27,10 @@ struct ReplicaManager {
 
 void ReplicaManager_init(ReplicaManager *rm, ServerCommunicator *sc, int primary, std::vector<std::string> hosts_and_ports);
 void* ReplicaManager_connect(void* rm);
+void ReplicaManager_election(ReplicaManager *rm);
 void ReplicaManager_sendMessageToBackups(ServerCommunicator *sc, Message *msg);
+void ReplicaManager_heartBeater(ReplicaManager *rm);
+void ReplicaManager_iamTheLeader(ReplicaManager *rm);
+void ReplicaManager_updateLeader(ReplicaManager *rm, int elected);
 
 #endif

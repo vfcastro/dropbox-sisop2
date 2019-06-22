@@ -50,7 +50,9 @@ void ServerCommunicator_init(ServerCommunicator *sc, ReplicaManager *rm, unsigne
 void ServerCommunicator_start(ServerCommunicator *sc);
 void* ServerCommunicator_listen(void* sc);
 void* ServerCommunicator_accept(void* sc);
+void ServerCommunicator_receiveFromServer(ServerCommunicator *sc, int sockfd, int type_msg, int port);
 void ServerCommunicator_receive(ServerCommunicator *sc, int sockfd);
 void ServerCommunicator_send(ServerCommunicator *sc, int sockfd, int connectionId);
 void ServerCommunicator_exit(ServerCommunicator *sc, Message *msg);
+
 #endif

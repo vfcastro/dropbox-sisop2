@@ -24,6 +24,10 @@
 #define END_SYNC 14
 #define USER_EXIT 15
 #define HEARTBEAT 16
+#define ELECTION 17
+#define ANSWER 18
+#define COORDINATOR 19
+
 
 
 struct Message {
@@ -38,5 +42,6 @@ void Message_marshall(Message *msg_destino, Message *pacote_recebido);
 void Message_unmarshall(Message *msg_destino, Message *pacote_recebido);
 int Message_send(Message *msg, int sockfd);
 int Message_recv(Message *msg, int sockfd);
+int Message_testConnection(int sockfd);
 
 #endif
