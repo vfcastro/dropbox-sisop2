@@ -3,6 +3,7 @@
 #include <cstring>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include "../../include/common/Message.h"
 #include "../../include/server/ServerCommunicator.h"
@@ -47,6 +48,7 @@ void ServerCommunicator_init(ServerCommunicator *sc, ReplicaManager *rm, unsigne
 	pthread_mutex_init(&sc->threadConnIdLock, NULL);
 	pthread_mutex_init(&sc->userSessionsLock, NULL);
 	pthread_mutex_init(&sc->sendQueueLock, NULL);
+	pthread_mutex_init(&sc->clientAddressLock, NULL);
 
 	// std::cout << "ServerCommunicator_init(): bind OK\n";
 	// std::cout << "ServerCommunicator_init(): END\n";
@@ -79,7 +81,6 @@ void* ServerCommunicator_listen(void* sc) {
 			std::cerr << "ServerCommunicator_listen(): ERROR on accept\n";
 		}
 		else {
-			
 			//MUTEX acceptThreads
 			pthread_mutex_lock(&s->acceptedThreadsLock);
 			pthread_create(acceptThread,0,ServerCommunicator_accept,(void*)sc);
@@ -108,6 +109,9 @@ void* ServerCommunicator_accept(void* sc) {
 	pthread_mutex_unlock(&s->acceptedThreadsLock);
 
 	Message *msg = (Message*) malloc(sizeof(Message));
+    struct sockaddr_in addr;
+    socklen_t addr_size = sizeof(struct sockaddr_in);
+	char str[INET_ADDRSTRLEN];
 
 	// protocolo de abertura de conexao
 	if(Message_recv(msg,sockfd) != -1) {
@@ -121,6 +125,15 @@ void* ServerCommunicator_accept(void* sc) {
 			pthread_mutex_lock(&s->connectionIdLock);
 			s->connectionId = s->connectionId+1;
 			s->threadConnId.insert(std::pair<pthread_t,int>(pthread_self(),s->connectionId));
+
+			// recupera client ip e add map clientAddress
+			getpeername(sockfd, (struct sockaddr *)&addr, &addr_size);
+			strcpy(str, inet_ntoa(addr.sin_addr));
+			pthread_mutex_lock(&s->clientAddressLock);
+			s->clientAddress.insert(std::pair<int,std::string>(s->connectionId,std::string(str)));
+			std::cout << "ServerCommunicator_accept: CLIENT IP: " << s->clientAddress.find(s->connectionId)->second << "\n";
+			pthread_mutex_unlock(&s->clientAddressLock);
+			 
 			
 			//tenta criar uma sessao
 			pthread_mutex_lock(&s->userSessionsLock);
@@ -141,11 +154,9 @@ void* ServerCommunicator_accept(void* sc) {
 				}
 			}
 
-			/* SE FOR PRIMARIO, ENVIA MSG PARA BACKUPS */
-			if(s->rm->primary == 1)
-				ReplicaManager_sendMessageToBackups(s,msg);
-			
-			
+			msg->type = BACKUP_OPEN_SEND_CONN;
+			ReplicaManager_sendMessageToBackups(s->rm,msg);
+
 			pthread_mutex_unlock(&s->userSessionsLock);
 			pthread_mutex_unlock(&s->connectionIdLock);
 			/* FINAL SECAO CRITICA */
@@ -155,15 +166,16 @@ void* ServerCommunicator_accept(void* sc) {
 			msg->seqn = s->connectionId;
 			if(Message_send(msg,sockfd) != -1){
 				// std::cout << "ServerCommunicator_accept(): sent reply OK\n";
-				ServerCommunicator_receive(s,sockfd);
+				ServerCommunicator_receive(s,sockfd);			
 			}
 			else
 				std::cerr << "ServerCommunicator_accept(): ERROR sent reply OK\n";
-					
+
 			break;
 
 		case OPEN_RECV_CONN:
-			// std::cout << "ServerCommunicator_accept(): read msg OPEN_RECV_CONN\n";		
+			// std::cout << "ServerCommunicator_accept(): read msg OPEN_RECV_CONN\n";
+
 			msg->type = OK;
 			if(Message_send(msg,sockfd) != -1) {
 				// std::cout << "ServerCommunicator_accept(): sent reply OK\n";
@@ -173,10 +185,16 @@ void* ServerCommunicator_accept(void* sc) {
 				pthread_mutex_lock(&s->sendQueueLock);
 				s->sendQueue.insert(std::pair<int,std::queue<Message*>>(msg->seqn,queue));
 				pthread_mutex_unlock(&s->sendQueueLock);
-				ServerCommunicator_send(s,sockfd,msg->seqn);
+
+				msg->type = BACKUP_OPEN_RECV_CONN;
+				ReplicaManager_sendMessageToBackups(s->rm,msg);	
+
+				ServerCommunicator_send(s,sockfd,msg->seqn);			
+
 			}
 			else
 				std::cerr << "ServerCommunicator_accept(): ERROR sent reply OK\n";
+			break;
 
 		case HEARTBEAT:
 			ServerCommunicator_receiveFromServer(s, sockfd, HEARTBEAT, msg->seqn);
@@ -193,6 +211,10 @@ void* ServerCommunicator_accept(void* sc) {
 		case COORDINATOR:
 			ServerCommunicator_receiveFromServer(s, sockfd, COORDINATOR, msg->seqn);
 			break;
+			
+		case BACKUP_START:
+			ReplicaManager_startBackup(s->rm,sockfd);
+			break;		
 
 		default:
 			std::cerr << "ServerCommunicator_accept(): msg type not valid!\n";

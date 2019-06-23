@@ -27,8 +27,11 @@
 #define ELECTION 17
 #define ANSWER 18
 #define COORDINATOR 19
-
-
+#define BACKUP_START 20
+#define BACKUP_OPEN_SEND_CONN 21
+#define BACKUP_OPEN_RECV_CONN 22
+#define BACKUP_OPEN_SESSION 23
+#define BACKUP_FILE_CLOSE_WRITE 24
 
 struct Message {
 	unsigned int type;

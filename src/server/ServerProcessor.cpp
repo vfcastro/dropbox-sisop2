@@ -70,7 +70,7 @@ void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
 	//Se não houve, criar
 	std::string sync_dir(SYNC_DIR_BASE_NAME);
 	sync_dir.append(msg->username);
-	std::cerr<<"New Session for: " << msg->username << "\n";
+	std::cout<<"New Session for: " << msg->username << "\n";
 
 	if(FileManager_createDir((char*)sync_dir.c_str()) == -1) {
 		std::cerr<<"ServerProcessor_openSession(): ERROR creating user dir " << sync_dir << "\n";
@@ -78,6 +78,9 @@ void ServerProcessor_openSession(ServerCommunicator *sc, Message *msg)  {
 		Message_send(msg,sockfd);
 		return;
 	}
+
+	msg->type = BACKUP_OPEN_SESSION;
+	ReplicaManager_sendMessageToBackups(sc->rm,msg);
 
 	msg->type = OK;
 	if(Message_send(msg,sockfd) == -1) {
@@ -113,11 +116,16 @@ void ServerProcessor_onCloseWrite(ServerCommunicator *sc, Message *msg) {
 	// Envia um OK para o cliente
 	msg->type = OK;
 	Message_send(msg,sockfd);
-	
+
 	// Começa o recebimento do arquivo
 	if(FileManager_receiveFile(path, msg, sockfd) == -1){
 		std::cerr<<"ServerProcessor_onCloseWrite(): Error Receive File\n";
 	}
+
+	// propaga os arquivos para os bakcups
+	Message *new_msg = Message_create(BACKUP_FILE_CLOSE_WRITE,0,msg->username,filename.c_str());
+	ReplicaManager_sendFileToBackups(sc->rm,path,new_msg);
+	free(new_msg);
 
 	// Propaga o arquivo para o restante dos dispositivos
 	ServerProcessor_propagateFiles(sc, connectionId, msg, filename, 1);
@@ -376,7 +384,9 @@ void ServerProcessor_listServerCommand(ServerCommunicator *sc, Message *msg){
 
 void ServerProcessor_getSync(ServerCommunicator *sc, Message *msg){
 	// std::cout << "ServerProcessor_getSync(): recv GET_SYNC_DIR from client " << msg->username << "\n";
+	pthread_mutex_lock(&sc->acceptedThreadsLock);
 	int sockfd = sc->acceptedThreads.find(pthread_self())->second;
+	pthread_mutex_unlock(&sc->acceptedThreadsLock);
 	
 	std::string path("./sync_dir_");
 	path.append(msg->username).append("/");
