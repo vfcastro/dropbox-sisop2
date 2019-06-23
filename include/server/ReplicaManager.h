@@ -21,10 +21,22 @@ struct ReplicaManager {
 
     // thread de conexao entre servers
     pthread_t connectionThread;
+
+    // mutex para envio de msgs aos backups
+    pthread_mutex_t sendMessageToBackupsLock;
 };
 
 void ReplicaManager_init(ReplicaManager *rm, ServerCommunicator *sc, int primary, std::vector<std::string> hosts_and_ports);
 void* ReplicaManager_connect(void* rm);
-void ReplicaManager_sendMessageToBackups(ServerCommunicator *sc, Message *msg);
+void ReplicaManager_sendMessageToBackups(ReplicaManager *rm, Message *msg);
+// Aguarda mensagens do primario
+void ReplicaManager_startBackup(ReplicaManager *rm, int sockfd);
+// Processa msg vinda do primario
+void ReplicaManager_dispatch(ReplicaManager *rm, Message *msg, int sockfd);
+int  ReplicaManager_openSendConn(ReplicaManager *rm, Message *msg);
+int  ReplicaManager_openRecvConn(ReplicaManager *rm, Message *msg);
+int  ReplicaManager_openSession(ReplicaManager *rm, Message *msg);
+int  ReplicaManager_receiveFile(ReplicaManager *rm, Message *msg, int sockfd);
+void ReplicaManager_sendFileToBackups(ReplicaManager *rm, std::string path, Message *msg);
 
 #endif

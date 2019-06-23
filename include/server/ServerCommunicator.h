@@ -37,6 +37,10 @@ struct ServerCommunicator {
   std::map< std::string , std::pair<int,int> > userSessions;
   pthread_mutex_t userSessionsLock;
 
+  //mapeamento connectionId -> clientAddress
+  std::map<int,std::string> clientAddress;
+  pthread_mutex_t clientAddressLock;
+
   //mapeamento connectionId -> fila de msgs para envio ao cliente
   std::map<int,std::queue<Message*>> sendQueue;
   pthread_mutex_t sendQueueLock;

@@ -24,7 +24,11 @@
 #define END_SYNC 14
 #define USER_EXIT 15
 #define HEARTBEAT 16
-
+#define BACKUP_START 17
+#define BACKUP_OPEN_SEND_CONN 18
+#define BACKUP_OPEN_RECV_CONN 19
+#define BACKUP_OPEN_SESSION 20
+#define BACKUP_FILE_CLOSE_WRITE 21
 
 struct Message {
 	unsigned int type;

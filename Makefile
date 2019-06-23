@@ -28,10 +28,12 @@ common:
 test:
 	mkdir -p $(TEST_DIR)/server1
 	mkdir -p $(TEST_DIR)/server2
+	mkdir -p $(TEST_DIR)/server3
 	mkdir -p $(TEST_DIR)/client-session1
 	mkdir -p $(TEST_DIR)/client-session2
 	cp $(BIN_DIR)/server $(TEST_DIR)/server1
 	cp $(BIN_DIR)/server $(TEST_DIR)/server2
+	cp $(BIN_DIR)/server $(TEST_DIR)/server3
 	cp $(BIN_DIR)/client $(TEST_DIR)/client-session1
 	cp $(BIN_DIR)/client $(TEST_DIR)/client-session2
 
