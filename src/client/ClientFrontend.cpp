@@ -81,7 +81,7 @@ void* ClientFrontend_receive(void* cc)
                 if(msg->type == FRONTEND_NEW_SERVER)
                 {
 					pthread_mutex_lock(&c->sockfdLock);
-					
+
 					close(c->sendsockfd);
 					c->sendsockfd = Socket_openSocket(msg->payload,msg->seqn);
 					new_msg = Message_create(FRONTEND_OPEN_SEND_CONN,c->connectionId,std::string(c->username).c_str(),std::string().c_str());
@@ -97,6 +97,9 @@ void* ClientFrontend_receive(void* cc)
 					std::cout << "ClientFrontend_receive: sent FRONTEND_RECV_SEND_CONN to " << Socket_getClientIP(*newsockfd) << ":" << msg->seqn << "\n";
 					Message_recv(new_msg,c->recvsockfd);
 					free(new_msg);
+
+					new_msg->type = FRONTEND_NEW_SERVER;
+					Message_send(new_msg,*newsockfd);
 
 					pthread_mutex_unlock(&c->sockfdLock);
                 }

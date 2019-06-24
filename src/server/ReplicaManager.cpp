@@ -306,7 +306,7 @@ void ReplicaManager_dispatch(ReplicaManager *rm, Message *msg, int sockfd)
 
 int  ReplicaManager_openSendConn(ReplicaManager *rm, Message *msg)
 {
-    std::cout << "\n\nReplicaManager_openSendConn\n\n";
+    std::cout << "\n\nReplicaManager_openSendConn\n";
     ServerCommunicator *s = rm->sc;
 
     s->connectionId = s->connectionId+1;
@@ -321,6 +321,7 @@ int  ReplicaManager_openSendConn(ReplicaManager *rm, Message *msg)
                 )
         )
     );
+    std::cout << "ReplicaManager_openSendConn(): added " << s->clientAddress.find(s->connectionId)->second.first << ":" << s->clientAddress.find(s->connectionId)->second.second << "\n\n";
     
     //tenta criar uma sessao
     if(s->userSessions.insert(std::pair<std::string,std::pair<int,int> >(msg->username,std::pair<int,int>(s->connectionId,0))).second == false) {
@@ -417,14 +418,19 @@ void ReplicaManager_updateClients(ReplicaManager *rm)
             if(sockfd != -1)
             {
 			    Message *msg = Message_create(FRONTEND_NEW_SERVER,rm->primary_port,std::string().c_str(),std::string(rm->primary_host).c_str());
+                std::cout << "ReplicaManager_updateClients: sending FRONTEND_NEW_SERVER  to " << it->second.first << ":" << it->second.second << "on fd " << sockfd << "\n";
                 Message_send(msg,sockfd);
+                std::cout << "ReplicaManager_updateClients: receiveing FRONTEND_NEW_SERVER OK from " << it->second.first << ":" << it->second.second << "on fd " << sockfd << "\n";
                 Message_recv(msg,sockfd);
 
-                std::cout << "ReplicaManager_updateClients: FRONTEND_NEW_SERVER sent to " << it->second.first << ":" << it->second.second << "\n";
+                std::cout << "ReplicaManager_updateClients: FRONTEND_NEW_SERVER OK received from " << it->second.first << ":" << it->second.second << "on fd " << sockfd << "\n";
                 connected = 1;
             }
             else
+            {   
+                std::cout << "ReplicaManager_updateClients: ERROR opening socket to " << it->second.first << ":" << it->second.second << "\n";
                 sleep(1);            
+            }
         }
     }
 
