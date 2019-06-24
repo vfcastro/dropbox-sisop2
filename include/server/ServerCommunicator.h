@@ -38,8 +38,8 @@ struct ServerCommunicator {
   std::map< std::string , std::pair<int,int> > userSessions;
   pthread_mutex_t userSessionsLock;
 
-  //mapeamento connectionId -> clientAddress
-  std::map<int,std::string> clientAddress;
+  //mapeamento connectionId -> clientAddress/clientPort
+  std::map<int,std::pair<std::string,unsigned int>> clientAddress;
   pthread_mutex_t clientAddressLock;
 
   //mapeamento connectionId -> fila de msgs para envio ao cliente
@@ -59,5 +59,7 @@ void ServerCommunicator_receiveFromServer(ServerCommunicator *sc, int sockfd, in
 void ServerCommunicator_receive(ServerCommunicator *sc, int sockfd);
 void ServerCommunicator_send(ServerCommunicator *sc, int sockfd, int connectionId);
 void ServerCommunicator_exit(ServerCommunicator *sc, Message *msg);
+void ServerCommunicator_updateOpenSendConn(ServerCommunicator *sc, Message *msg, int sockfd);
+void ServerCommunicator_updateOpenRecvConn(ServerCommunicator *sc, Message *msg, int sockfd);
 
 #endif

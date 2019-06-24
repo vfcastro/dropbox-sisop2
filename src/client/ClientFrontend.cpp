@@ -4,7 +4,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <netdb.h>                      
+#include <netdb.h> 
+#include <unistd.h>                     
 #include "../../include/client/ClientFrontend.h"
 #include "../../include/common/Socket.h"
 #include "../../include/common/Message.h"
@@ -31,6 +32,8 @@ void ClientFrontend_init(ClientCommunicator *cc, std::string server, unsigned in
 
 void* ClientFrontend_receive(void* cc)
 {
+	ClientCommunicator *c = (ClientCommunicator*)cc;
+
 	int sockfd;
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
     	std::cerr << "ClientFrontend_receive(): ERROR opening socket\n";
@@ -45,7 +48,7 @@ void* ClientFrontend_receive(void* cc)
 
 	struct sockaddr_in serv_addr;
 	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port = htons(((ClientCommunicator*)cc)->frontend_port);
+	serv_addr.sin_port = htons(c->frontend_port);
 	serv_addr.sin_addr.s_addr = INADDR_ANY;
 	bzero(&(serv_addr.sin_zero), 8);
 
@@ -64,19 +67,38 @@ void* ClientFrontend_receive(void* cc)
 	while(1) {
 		connection = (struct sockaddr *)malloc(clilen);
 		newsockfd = (int*)malloc(sizeof(int));       
-        Message *msg = (Message*)malloc(sizeof(Message));                 		
+        Message *msg = (Message*)malloc(sizeof(Message));
+		Message *new_msg;
 		
 		if ((*newsockfd = accept(sockfd, connection, &clilen)) == -1) {
 			std::cerr << "ClientFrontend_receive(): ERROR on accept\n";
 		}
 		else {
-		    std::cout << "ClientFrontend_receive: SERVER IP: " << Socket_getClientIP(sockfd) << "\n";
+		    std::cout << "ClientFrontend_receive: SERVER IP: " << Socket_getClientIP(*newsockfd) << "\n";
 	
-            if(Message_recv(msg,sockfd) != -1)
+            if(Message_recv(msg,*newsockfd) != -1)
             {
                 if(msg->type == FRONTEND_NEW_SERVER)
                 {
+					pthread_mutex_lock(&c->sockfdLock);
+					
+					close(c->sendsockfd);
+					c->sendsockfd = Socket_openSocket(msg->payload,msg->seqn);
+					new_msg = Message_create(FRONTEND_OPEN_SEND_CONN,c->connectionId,std::string(c->username).c_str(),std::string().c_str());
+					Message_send(new_msg,c->sendsockfd);
+					std::cout << "ClientFrontend_receive: sent FRONTEND_OPEN_SEND_CONN to " << Socket_getClientIP(*newsockfd) << ":" << msg->seqn << "\n";
+					Message_recv(new_msg,c->sendsockfd);
+					free(new_msg);
 
+					close(c->recvsockfd);
+					c->recvsockfd = Socket_openSocket(msg->payload,msg->seqn);
+					new_msg = Message_create(FRONTEND_OPEN_RECV_CONN,c->connectionId,std::string(c->username).c_str(),std::string().c_str());
+					Message_send(new_msg,c->recvsockfd);
+					std::cout << "ClientFrontend_receive: sent FRONTEND_RECV_SEND_CONN to " << Socket_getClientIP(*newsockfd) << ":" << msg->seqn << "\n";
+					Message_recv(new_msg,c->recvsockfd);
+					free(new_msg);
+
+					pthread_mutex_unlock(&c->sockfdLock);
                 }
             }
 

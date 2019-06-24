@@ -111,6 +111,7 @@ void* ServerCommunicator_accept(void* sc) {
 	pthread_mutex_unlock(&s->acceptedThreadsLock);
 
 	Message *msg = (Message*) malloc(sizeof(Message));
+	std::string clientIP(Socket_getClientIP(sockfd));
  
 	// protocolo de abertura de conexao
 	if(Message_recv(msg,sockfd) != -1) {
@@ -123,12 +124,23 @@ void* ServerCommunicator_accept(void* sc) {
 			//add map thread -> connectionId
 			pthread_mutex_lock(&s->connectionIdLock);
 			s->connectionId = s->connectionId+1;
-			s->threadConnId.insert(std::pair<pthread_t,int>(pthread_self(),s->connectionId));
 
-			// recupera client ip e add map clientAddress
+			pthread_mutex_lock(&s->threadConnIdLock);
+			s->threadConnId.insert(std::pair<pthread_t,int>(pthread_self(),s->connectionId));
+			pthread_mutex_unlock(&s->threadConnIdLock);
+
+			// recupera client ip/porta e add map clientAddress
 			pthread_mutex_lock(&s->clientAddressLock);
-			s->clientAddress.insert(std::pair<int,std::string>(s->connectionId,std::string(Socket_getClientIP(sockfd))));
-			std::cout << "ServerCommunicator_accept: CLIENT IP: " << s->clientAddress.find(s->connectionId)->second << "\n";
+			s->clientAddress.insert(
+				std::pair<int, std::pair<std::string,unsigned int>>(
+						s->connectionId,
+						std::pair<std::string,unsigned int>(
+							std::string(Socket_getClientIP(sockfd)),
+							msg->seqn
+						)
+				)
+			);
+			std::cout << "ServerCommunicator_accept: CLIENT IP: " << s->clientAddress.find(s->connectionId)->second.first << "\n";
 			pthread_mutex_unlock(&s->clientAddressLock);
 			 
 			
@@ -152,6 +164,8 @@ void* ServerCommunicator_accept(void* sc) {
 			}
 
 			msg->type = BACKUP_OPEN_SEND_CONN;
+			memcpy((void*)msg->payload,(void*)clientIP.c_str(),clientIP.size());
+			msg->payload[clientIP.size()] = '\0';
 			ReplicaManager_sendMessageToBackups(s->rm,msg);
 
 			pthread_mutex_unlock(&s->userSessionsLock);
@@ -211,7 +225,16 @@ void* ServerCommunicator_accept(void* sc) {
 			
 		case BACKUP_START:
 			ReplicaManager_startBackup(s->rm,sockfd);
-			break;		
+			break;
+
+		case FRONTEND_OPEN_SEND_CONN:
+			ServerCommunicator_updateOpenSendConn(s,msg,sockfd);
+			break;
+		
+		case FRONTEND_OPEN_RECV_CONN:
+			ServerCommunicator_updateOpenRecvConn(s,msg,sockfd);
+			break;
+
 
 		default:
 			std::cerr << "ServerCommunicator_accept(): msg type not valid!\n";
@@ -272,15 +295,17 @@ void ServerCommunicator_receive(ServerCommunicator *sc, int sockfd) {
 	// std::cout << "ServerCommunicator_receive(): WAITING for msg on fd " << sockfd << "\n"; 
 	
 	Message *msg = (Message*)malloc(sizeof(Message));
-	while(Message_recv(msg,sockfd) != -1) {
-
-		if(msg->type == OK){
-			pthread_exit(NULL);
+	int connected = 1;
+	while(connected) {
+		if(Message_recv(msg,sockfd) != -1) 
+		{
+			if(msg->type == OK){
+				connected = 0;
+			}
+			ServerProcessor_dispatch(sc,msg);
 		}
-
-		ServerProcessor_dispatch(sc,msg);
+		
 	}
-
 	ServerProcessor_exitCommand(sc,msg);
 
 	free(msg);
@@ -318,4 +343,22 @@ void ServerCommunicator_send(ServerCommunicator *sc, int sockfd, int connectionI
 			
 	}
 
+}
+
+void ServerCommunicator_updateOpenSendConn(ServerCommunicator *sc, Message *msg, int sockfd)
+{
+	pthread_mutex_lock(&sc->threadConnIdLock);
+	sc->threadConnId.insert(std::pair<pthread_t,int>(pthread_self(),msg->seqn));
+	pthread_mutex_unlock(&sc->threadConnIdLock);
+
+	Message_send(msg,sockfd);
+
+	ServerCommunicator_receive(sc,sockfd);
+
+}
+
+void ServerCommunicator_updateOpenRecvConn(ServerCommunicator *sc, Message *msg, int sockfd)
+{
+	Message_send(msg,sockfd);
+	ServerCommunicator_send(sc, sockfd, msg->seqn);
 }

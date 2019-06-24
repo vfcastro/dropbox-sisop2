@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstring>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -23,7 +24,7 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username) {
 	memcpy((void*)cc->username,(void*)std::string(username).c_str(),MAX_USERNAME_SIZE);
 
 	// Solicita abertura de conexao de envio
-	Message *msg = Message_create(OPEN_SEND_CONN,0,std::string(cc->username).c_str(),std::string().c_str());
+	Message *msg = Message_create(OPEN_SEND_CONN,cc->frontend_port,std::string(cc->username).c_str(),std::string().c_str());
 	if(Message_send(msg,ClientCommunicator_getSendSocket(cc)) != -1) {
 		// std::cout << "ClientCommunicator_init(): sent msg OPEN_SEND_CONN\n";
 	    if(Message_recv(msg,ClientCommunicator_getSendSocket(cc)) != -1) { 
@@ -48,12 +49,12 @@ void ClientCommunicator_init(ClientCommunicator *cc, std::string username) {
 	//free(msg);
 
 	// Solicita abertura de conexao de recebimento passando conectionId recebido da OPEN_SEND_CONN no campo seqn
-	int connectionId = msg->seqn;
+	cc->connectionId = msg->seqn;
 	// std::cout << "ClientCommunicator_init(): CONNECTION ID " << connectionId << "\n";
-	msg = Message_create(OPEN_RECV_CONN,connectionId,std::string(cc->username).c_str(),std::string().c_str());
+	msg = Message_create(OPEN_RECV_CONN,cc->connectionId,std::string(cc->username).c_str(),std::string().c_str());
 	if(Message_send(msg,ClientCommunicator_getRecvSocket(cc)) != -1) {
 		// std::cout << "ClientCommunicator_init(): sent msg OPEN_RECV_CONN\n";
-	    if(Message_recv(msg,cc->recvsockfd) != -1) { 
+	    if(Message_recv(msg,ClientCommunicator_getRecvSocket(cc)) != -1) { 
 	    	if(msg->type == OK){
 				std::cout << "";
 	    	}
@@ -100,8 +101,11 @@ void* ClientCommunicator_receive(void *cc) {
     	pthread_exit(NULL);
     }
 
-    while(Message_recv(msg, ClientCommunicator_getRecvSocket(c)) != -1) {
-        ClientProcessor_dispatch(c,msg);
+    while(1) {
+		if(Message_recv(msg, ClientCommunicator_getRecvSocket(c)) != -1)
+        	ClientProcessor_dispatch(c,msg);
+		else
+			sleep(1);
     }
 
     std::cerr << "ClientCommunicator_receive(): Fechando\n";

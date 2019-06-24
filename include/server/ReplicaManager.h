@@ -13,6 +13,12 @@ struct ReplicaManager {
     std::string primary_host;
     unsigned int primary_port;
 
+    int backupStopped;
+    pthread_mutex_t backupStoppedLock;
+
+    int runningElection;
+    pthread_mutex_t runningElectionLock;
+
     // map de host/porta e socket dos backups
     std::map<std::pair<std::string,unsigned int>,int> backups;
 

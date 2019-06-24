@@ -19,6 +19,10 @@ void ReplicaManager_init(ReplicaManager *rm, ServerCommunicator *sc, int primary
     // populando a struct 
     rm->sc = sc;    
     rm->primary = primary;
+    rm->backupStopped = 1;
+    pthread_mutex_init(&rm->backupStoppedLock,NULL);
+    rm->runningElection = 0;
+    pthread_mutex_init(&rm->runningElectionLock,NULL);
 
     if(primary == 1) {
         rm->primary_host = sc->host;
@@ -140,6 +144,8 @@ void ReplicaManager_heartBeater(ReplicaManager *rm){
 }
 
 void ReplicaManager_election(ReplicaManager *rm){
+    pthread_mutex_lock(&rm->runningElectionLock);
+    rm->runningElection = 1;
     std::cout << "ReplicaManager_election(): starting a new election" << "\n";
     
     Message *msg = Message_create(ELECTION, rm->sc->port, std::string().c_str(),std::string(rm->sc->host).c_str());
@@ -180,8 +186,26 @@ void ReplicaManager_election(ReplicaManager *rm){
 
     // Como não existe maior, se elege e avisa geral
     if(!existe_maior){
+        int already_primary = rm->primary;
         ReplicaManager_iamTheLeader(rm);
-    }     
+
+        if(!already_primary)
+        {
+            pthread_mutex_lock(&rm->backupStoppedLock);
+            std::cout << "ReplicaManager_election(): BACKUP STOPPED\n";
+            rm->backupStopped = 1;
+            pthread_mutex_unlock(&rm->backupStoppedLock);
+
+            ReplicaManager_updateClients(rm);
+            
+            rm->runningElection = 0;
+            pthread_mutex_unlock(&rm->runningElectionLock);
+            ReplicaManager_connect((void*)rm);
+        }
+    }
+
+    rm->runningElection = 0;
+    pthread_mutex_unlock(&rm->runningElectionLock);
 }
 
 void ReplicaManager_iamTheLeader(ReplicaManager *rm){
@@ -207,14 +231,6 @@ void ReplicaManager_iamTheLeader(ReplicaManager *rm){
 
         std::cout << "ReplicaManager_iamTheLeader(): COORDINATOR sent to " << it->first.first << ":" << it->first.second << "\n";
     }
-
-
-    ReplicaManager_updateClients(rm);
-    
-    rm->connectionThread = (pthread_t*)malloc(sizeof(pthread_t));
-    pthread_create(rm->connectionThread,0,ReplicaManager_connect,(void*)rm);
-    pthread_exit(NULL);
-
 }
 
 void ReplicaManager_sendMessageToBackups(ReplicaManager *rm, Message *msg) {
@@ -236,14 +252,24 @@ void ReplicaManager_startBackup(ReplicaManager *rm, int sockfd)
 {
     std::cout << "\n\nReplicaManager_startBackup\n\n";
     Message *msg = (Message*)malloc(sizeof(Message));
-	while(Message_recv(msg,sockfd) != -1) {
 
-		if(msg->type == OK){
-			pthread_exit(NULL);
-		}
+    pthread_mutex_lock(&rm->backupStoppedLock);
+    rm->backupStopped = 0;
+    pthread_mutex_unlock(&rm->backupStoppedLock);
 
-		ReplicaManager_dispatch(rm,msg,sockfd);
+    while(!rm->backupStopped)
+    {
+        if(Message_recv(msg,sockfd) != -1)
+        {
+            if(msg->type == OK){
+                pthread_exit(NULL);
+            }
+        
+            ReplicaManager_dispatch(rm,msg,sockfd);
+        }
+   
 	}
+    
 
 	free(msg);
 }
@@ -284,7 +310,17 @@ int  ReplicaManager_openSendConn(ReplicaManager *rm, Message *msg)
     ServerCommunicator *s = rm->sc;
 
     s->connectionId = s->connectionId+1;
-    s->threadConnId.insert(std::pair<pthread_t,int>(pthread_self(),s->connectionId));
+
+    // recupera client ip/porta e add map clientAddress
+    s->clientAddress.insert(
+        std::pair<int, std::pair<std::string,unsigned int>>(
+                s->connectionId,
+                std::pair<std::string,unsigned int>(
+                    msg->payload,
+                    msg->seqn
+                )
+        )
+    );
     
     //tenta criar uma sessao
     if(s->userSessions.insert(std::pair<std::string,std::pair<int,int> >(msg->username,std::pair<int,int>(s->connectionId,0))).second == false) {
@@ -368,6 +404,30 @@ void ReplicaManager_sendFileToBackups(ReplicaManager *rm, std::string path, Mess
 
 void ReplicaManager_updateClients(ReplicaManager *rm)
 {
+    std:cout << "ReplicaManager_updateClients\n";
+
+    // conecta aos clients e envia ip/porta novos
+    for (std::map<int,std::pair<std::string,unsigned int>>::iterator it = rm->sc->clientAddress.begin() ; it != rm->sc->clientAddress.end(); ++it)
+    {
+        int connected = 0;
+        while(connected == 0)
+        {
+            std::cout << "ReplicaManager_updateClients: trying " << it->second.first << ":" << it->second.second << "\n";
+            int sockfd = Socket_openSocket(it->second.first,it->second.second);
+            if(sockfd != -1)
+            {
+			    Message *msg = Message_create(FRONTEND_NEW_SERVER,rm->primary_port,std::string().c_str(),std::string(rm->primary_host).c_str());
+                Message_send(msg,sockfd);
+                Message_recv(msg,sockfd);
+
+                std::cout << "ReplicaManager_updateClients: FRONTEND_NEW_SERVER sent to " << it->second.first << ":" << it->second.second << "\n";
+                connected = 1;
+            }
+            else
+                sleep(1);            
+        }
+    }
+
 
 
 }
@@ -412,5 +472,9 @@ void ReplicaManager_receiveCoordinator(ReplicaManager *rm, Message *msg, int soc
     rm->primary_host = std::string(host);
     rm->primary_port = port;
     rm->backups.erase(std::pair<std::string,unsigned int>(host,port));
+
+    pthread_mutex_lock(&rm->backupStoppedLock);
+    rm->backupStopped = 1;
+    pthread_mutex_unlock(&rm->backupStoppedLock);
 
 }

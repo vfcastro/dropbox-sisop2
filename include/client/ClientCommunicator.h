@@ -11,6 +11,7 @@ struct ClientCommunicator {
   std::string server;
   unsigned int port;
   unsigned int frontend_port;
+  int connectionId;
 
   int sendsockfd;
   int recvsockfd;

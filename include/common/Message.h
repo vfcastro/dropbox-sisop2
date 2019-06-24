@@ -31,6 +31,8 @@
 #define BACKUP_OPEN_SESSION 23
 #define BACKUP_FILE_CLOSE_WRITE 24
 #define FRONTEND_NEW_SERVER 25
+#define FRONTEND_OPEN_SEND_CONN 26
+#define FRONTEND_OPEN_RECV_CONN 27
 
 struct Message {
 	unsigned int type;
