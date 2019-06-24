@@ -80,11 +80,11 @@ int Message_send(Message *msg, int sockfd) {
         return -1;
     }
 
-    // std::cout << "\n\n\nMensagem Enviada on fd " << sockfd << "\n";
-    // std::cout << "msg.type: " << msg->type << "\n";
-    // std::cout << "msg.seqn: " << msg->seqn << "\n";
-    // std::cout << "msg.username: " << msg->username << "\n";
-    // std::cout << "msg.payload: " << msg->payload << "\n\n\n";
+    std::cout << "\n\n\nMensagem Enviada on fd " << sockfd << "\n";
+    std::cout << "msg.type: " << msg->type << "\n";
+    std::cout << "msg.seqn: " << msg->seqn << "\n";
+    std::cout << "msg.username: " << msg->username << "\n";
+    std::cout << "msg.payload: " << msg->payload << "\n\n\n";
 
     free(buffer_socket);
     // std::cout << "Message_send(): END on fd " << sockfd << "\n";
@@ -95,8 +95,9 @@ int Message_recv(Message *msg, int sockfd) {
     void *buffer = (void*)malloc(sizeof(Message));
     int bytes_read;
     int bytes_pending = sizeof(Message);
+    int timeout = 20;
 
-    while(bytes_pending > 0)
+    while(bytes_pending > 0 && timeout > 0)
     {
         bytes_read = read(sockfd,buffer,bytes_pending);
 
@@ -108,19 +109,32 @@ int Message_recv(Message *msg, int sockfd) {
             return -1;
         }
 
+        if(bytes_read == 0)
+        {
+            timeout--;
+            usleep(100000);
+        }
+
         bytes_pending -= bytes_read;
         buffer += bytes_read;
     }
+
+    if(timeout == 0)
+    {
+        std::cerr << "Message_recv: TIMEOUT reading message from socket" << sockfd << "\n";
+        return -1;
+    }
+
     buffer -= sizeof(Message);
 
     Message_unmarshall(msg, (Message*)buffer);
     free(buffer);
 
-    // std::cout << "\n\n\nMensagem Recebida on fd " << sockfd << "\n";
-    // std::cout << "msg.type: " << msg->type << "\n";
-    // std::cout << "msg.seqn: " << msg->seqn << "\n";
-    // std::cout << "msg.username: " << msg->username << "\n";
-    // std::cout << "msg.payload: " << msg->payload << "\n";
+    std::cout << "\n\n\nMensagem Recebida on fd " << sockfd << "\n";
+    std::cout << "msg.type: " << msg->type << "\n";
+    std::cout << "msg.seqn: " << msg->seqn << "\n";
+    std::cout << "msg.username: " << msg->username << "\n";
+    std::cout << "msg.payload: " << msg->payload << "\n";
 
     // std::cout << "Message_recv(): END on fd " << sockfd << "\n";
     return sizeof(Message);

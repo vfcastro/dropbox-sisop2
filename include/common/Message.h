@@ -1,8 +1,6 @@
 #ifndef __MESSAGE_H__
 #define __MESSAGE_H__
 
-#define MAX_UNREAD_BYTES 4096 
-
 #define MAX_PAYLOAD_SIZE 500
 #define MAX_USERNAME_SIZE 100
 
@@ -32,6 +30,7 @@
 #define BACKUP_OPEN_RECV_CONN 22
 #define BACKUP_OPEN_SESSION 23
 #define BACKUP_FILE_CLOSE_WRITE 24
+#define FRONTEND_NEW_SERVER 25
 
 struct Message {
 	unsigned int type;
@@ -45,6 +44,5 @@ void Message_marshall(Message *msg_destino, Message *pacote_recebido);
 void Message_unmarshall(Message *msg_destino, Message *pacote_recebido);
 int Message_send(Message *msg, int sockfd);
 int Message_recv(Message *msg, int sockfd);
-int Message_testConnection(int sockfd);
 
 #endif

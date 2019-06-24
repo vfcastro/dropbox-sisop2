@@ -13,6 +13,7 @@
 using namespace std;
 
 struct ServerCommunicator {
+  std::string host;
   unsigned int port;
   unsigned int backlog;
   int sockfd;

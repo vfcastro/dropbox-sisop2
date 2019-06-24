@@ -31,16 +31,20 @@ test:
 	mkdir -p $(TEST_DIR)/server3
 	mkdir -p $(TEST_DIR)/client-session1
 	mkdir -p $(TEST_DIR)/client-session2
-	cp $(BIN_DIR)/server $(TEST_DIR)/server1
-	cp $(BIN_DIR)/server $(TEST_DIR)/server2
-	cp $(BIN_DIR)/server $(TEST_DIR)/server3
+	cp $(BIN_DIR)/server $(TEST_DIR)/server1/server1
+	cp $(BIN_DIR)/server $(TEST_DIR)/server2/server2
+	cp $(BIN_DIR)/server $(TEST_DIR)/server3/server3
 	cp $(BIN_DIR)/client $(TEST_DIR)/client-session1
 	cp $(BIN_DIR)/client $(TEST_DIR)/client-session2
 
+test1:
 	sh $(TEST_DIR)/test1.sh
 
 test2:
 	sh $(TEST_DIR)/test2.sh
+
+test3:
+	sh $(TEST_DIR)/test3.sh
 
 clean:
 	rm -rf $(BIN_DIR)* $(BUILD_DIR) $(TEST_DIR)/client* $(TEST_DIR)/server*

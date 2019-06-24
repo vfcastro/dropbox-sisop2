@@ -13,11 +13,12 @@ int main (int argc, char **argv)
 	std::string username = std::string(argv[1]);
 	std::string server = std::string(argv[2]);
 	unsigned int port = std::stoul(argv[3]);
+	unsigned int frontend_port = std::stoul(argv[4]);
 
 	// Inicia os módulos de conexão
 
 	ClientCommunicator cc;
-	ClientFrontend_init(&cc,server,port);
+	ClientFrontend_init(&cc,server,port,frontend_port);
 	ClientCommunicator_init(&cc,username);
 	ClientCommunicator_start(&cc);
 	ClientCommunicator_openSession(&cc);

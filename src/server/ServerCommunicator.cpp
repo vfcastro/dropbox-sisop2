@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include "../../include/common/Message.h"
+#include "../../include/common/Socket.h"
 #include "../../include/server/ServerCommunicator.h"
 #include "../../include/server/ReplicaManager.h"
 #include "../../include/server/ServerProcessor.h"
@@ -13,6 +14,7 @@
 void ServerCommunicator_init(ServerCommunicator *sc, ReplicaManager *rm, unsigned int port, unsigned int backlog) {
 	// std::cout << "ServerCommunicator_init(): START\n";
 	sc->rm = rm;
+	sc->host = Socket_getServerIP();
 	sc->port = port;
 	sc->backlog = backlog;
 	sc->connectionId = 0;
@@ -109,10 +111,7 @@ void* ServerCommunicator_accept(void* sc) {
 	pthread_mutex_unlock(&s->acceptedThreadsLock);
 
 	Message *msg = (Message*) malloc(sizeof(Message));
-    struct sockaddr_in addr;
-    socklen_t addr_size = sizeof(struct sockaddr_in);
-	char str[INET_ADDRSTRLEN];
-
+ 
 	// protocolo de abertura de conexao
 	if(Message_recv(msg,sockfd) != -1) {
 		switch (msg->type) 
@@ -127,10 +126,8 @@ void* ServerCommunicator_accept(void* sc) {
 			s->threadConnId.insert(std::pair<pthread_t,int>(pthread_self(),s->connectionId));
 
 			// recupera client ip e add map clientAddress
-			getpeername(sockfd, (struct sockaddr *)&addr, &addr_size);
-			strcpy(str, inet_ntoa(addr.sin_addr));
 			pthread_mutex_lock(&s->clientAddressLock);
-			s->clientAddress.insert(std::pair<int,std::string>(s->connectionId,std::string(str)));
+			s->clientAddress.insert(std::pair<int,std::string>(s->connectionId,std::string(Socket_getClientIP(sockfd))));
 			std::cout << "ServerCommunicator_accept: CLIENT IP: " << s->clientAddress.find(s->connectionId)->second << "\n";
 			pthread_mutex_unlock(&s->clientAddressLock);
 			 
@@ -197,11 +194,11 @@ void* ServerCommunicator_accept(void* sc) {
 			break;
 
 		case HEARTBEAT:
-			ServerCommunicator_receiveFromServer(s, sockfd, HEARTBEAT, msg->seqn);
+			ReplicaManager_receiveHeartBeat(s->rm, msg, sockfd);
 			break;
 
 		case ELECTION:
-			ServerCommunicator_receiveFromServer(s, sockfd, ELECTION, msg->seqn);
+			ReplicaManager_receiveElection(s->rm, msg, sockfd);
 			break;
 
 		case ANSWER:
@@ -209,7 +206,7 @@ void* ServerCommunicator_accept(void* sc) {
 			break;
 
 		case COORDINATOR:
-			ServerCommunicator_receiveFromServer(s, sockfd, COORDINATOR, msg->seqn);
+			ReplicaManager_receiveCoordinator(s->rm, msg, sockfd);
 			break;
 			
 		case BACKUP_START:
@@ -234,6 +231,7 @@ void* ServerCommunicator_accept(void* sc) {
 	// std::cout << "ServerCommunicator_accept(): ENDED thread " << pthread_self() << "\n"; 
 }
 
+
 void ServerCommunicator_receiveFromServer(ServerCommunicator *sc, int sockfd, int type_msg, int port){
 	Message *msg = (Message*) malloc(sizeof(Message));
 	
@@ -244,60 +242,30 @@ void ServerCommunicator_receiveFromServer(ServerCommunicator *sc, int sockfd, in
 
 	while(!flag_exit){
 		
-		switch (msg->type){
-		
-		case HEARTBEAT:
+		switch (msg->type)
+		{
 
-			// std::cerr << "ServerCommunicator_receiveFromServer(): Respondendo que ta vivo\n";
-			
-			break;
 
-		case ELECTION:
-			std::cerr << "ServerCommunicator_receiveFromServer(): Receive ELECTION from " << msg->seqn << "\n";
+			case ANSWER:
+				std::cerr << "ServerCommunicator_receiveFromServer(): Receive ANSWER from " << msg->seqn << "\n";
 
-			msg->type = OK;
-			if(Message_send(msg, sockfd) == -1){
-				std::cerr << "ServerCommunicator_receiveFromServer(): ERROR recv msg\n";
-				flag_exit = 1;
 				break;
-			}	
 
-			ReplicaManager_election(sc->rm);
 
-			break;
+			default:
+				std::cerr << "ServerCommunicator_receiveFromServer(): msg type not valid!\n";
+				flag_exit = 1;
 
-		case ANSWER:
-			std::cerr << "ServerCommunicator_receiveFromServer(): Receive ANSWER from " << msg->seqn << "\n";
-
-			break;
-
-		case COORDINATOR:
-			std::cerr << "ServerCommunicator_receiveFromServer(): Receive COORDINATOR from " << msg->seqn << "\n";
-
-			ReplicaManager_updateLeader(sc->rm, msg->seqn);
-
-			break;
-
-		default:
-			std::cerr << "ServerCommunicator_receiveFromServer(): msg type not valid!\n";
-			flag_exit = 1;
-
-			break;
+				break;
 		}
 
 		if(Message_recv(msg,sockfd) == -1){
 			std::cerr << "ServerCommunicator_receiveFromServer(): ERROR recv msg\n";
 			flag_exit = 1;
-			break;
 		}		
 	}
 
 	free(msg);
-	close(sockfd);
-
-	pthread_mutex_lock(&sc->acceptedThreadsLock);
-	sc->acceptedThreads.erase(pthread_self());
-	pthread_mutex_unlock(&sc->acceptedThreadsLock);
 }
 
 void ServerCommunicator_receive(ServerCommunicator *sc, int sockfd) {

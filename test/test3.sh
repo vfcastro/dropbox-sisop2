@@ -21,6 +21,9 @@ cd $CWD/test/client-session2
 nohup ./client user1 localhost 5000 6001 &
 sleep 2
 
+kill server1
+sleep 10
+
 cd $CWD
 cp ./test/$FILE $CWD/test/client-session1/sync_dir_user1/
 

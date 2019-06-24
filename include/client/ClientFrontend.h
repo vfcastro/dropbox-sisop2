@@ -9,7 +9,7 @@
 #include "../../include/common/Socket.h"
 #endif
 
-void ClientFrontend_init(ClientCommunicator *cc, std::string server, unsigned int port);
-void ClientFrontend_start(ClientCommunicator *cc);
+void ClientFrontend_init(ClientCommunicator *cc, std::string server, unsigned int port, unsigned int frontend_port);
+void* ClientFrontend_receive(void* cc);
 
 #endif

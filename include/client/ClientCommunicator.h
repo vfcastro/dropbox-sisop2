@@ -10,11 +10,12 @@ struct ClientCommunicator {
   char username[MAX_USERNAME_SIZE];
   std::string server;
   unsigned int port;
+  unsigned int frontend_port;
 
   int sendsockfd;
   int recvsockfd;
   pthread_t recvThread;
-
+  
   //int pauseSync = 0;
   pthread_mutex_t syncFilesLock;
 
@@ -23,6 +24,9 @@ struct ClientCommunicator {
 
   //conjunto de arquivos sendo sincronizados no momento
 	std::set<std::string> syncFiles;
+
+  //thread listen caso haja eleicao de novo server primario
+  pthread_t frontEndThread;
 
  };
 

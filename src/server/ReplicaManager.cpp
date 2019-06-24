@@ -21,7 +21,7 @@ void ReplicaManager_init(ReplicaManager *rm, ServerCommunicator *sc, int primary
     rm->primary = primary;
 
     if(primary == 1) {
-        rm->primary_host = string("localhost");
+        rm->primary_host = sc->host;
         rm->primary_port = sc->port;
     }
 
@@ -46,7 +46,8 @@ void ReplicaManager_init(ReplicaManager *rm, ServerCommunicator *sc, int primary
     /* ---------------- */
 
     // Diparando a thread que ira conectar aos demais servers
-    pthread_create(&rm->connectionThread,0,ReplicaManager_connect,(void*)rm);
+    rm->connectionThread = (pthread_t*)malloc(sizeof(pthread_t));
+    pthread_create(rm->connectionThread,0,ReplicaManager_connect,(void*)rm);
 }
 
 void* ReplicaManager_connect(void* rm) {
@@ -63,6 +64,11 @@ void* ReplicaManager_connect(void* rm) {
             int sockfd = Socket_openSocket(it->first.first,it->first.second);
             if(sockfd != -1)
             {
+                // Ja havia um socket aberto, entao estamos em um eleito.
+                // A conexao antiga era entre backups e pode ser fechada apos eleicao
+                if(it->second != 0)
+                    close(it->second);
+
                 it->second = sockfd;
 
                 if(r->primary == 1)
@@ -87,42 +93,56 @@ void* ReplicaManager_connect(void* rm) {
 }
 
 void ReplicaManager_heartBeater(ReplicaManager *rm){
-
     int sockfd;
-    int primary_connected = 0;
-
-    // Tenta uma primeira conexao com o servidor
-    if((sockfd = Socket_openSocket(rm->primary_host, rm->primary_port)) == -1){
-        std::cerr << "ReplicaManager_heartBeater(): ERROR primary server does not respond" << "\n";
-        
-        ReplicaManager_election(rm);            
-    }
-
-    primary_connected = 1;
-
-    Message *msg = Message_create(HEARTBEAT, 0, std::string().c_str(),std::string().c_str());
-
-    std::cout << "ReplicaManager_heartBeater(): connected to primary server" << "\n";
+    int connected = 0;
     
-    while(primary_connected){
-        if(Message_send(msg, sockfd) == -1){
-            primary_connected = 0;
-            break;        
+    while(rm->primary == 0) 
+    {  
+        // Tenta uma primeira conexao com o servidor
+        if((sockfd = Socket_openSocket(rm->primary_host, rm->primary_port)) == -1){
+            std::cerr << "ReplicaManager_heartBeater(): ERROR primary server does not respond" << "\n"; 
+            ReplicaManager_election(rm);            
         }
+        else
+        {
+            std::cout << "ReplicaManager_heartBeater(): connected to primary server" << "\n";
+            connected = 1;
+            Message *msg = Message_create(HEARTBEAT, 0, std::string().c_str(),std::string().c_str());
 
-        std::cout << "ReplicaManager_heartBeater(): primary server is alive" << "\n";
-        
-        sleep(2);
-    }
-    
-    ReplicaManager_election(rm);
-
+            while(connected)
+            {
+                if(Message_send(msg, sockfd) == -1){
+                    std::cerr << "ReplicaManager_heartBeater(): ERROR sending HEARTBEAT" << "\n";
+                    ReplicaManager_election(rm);
+                    connected = 0;
+                }
+                else
+                {
+                    if(Message_recv(msg,sockfd) == -1)
+                    {
+                        std::cerr << "ReplicaManager_heartBeater(): ERROR receiving HEARTBEAT" << "\n";
+                        ReplicaManager_election(rm);
+                        connected = 0;
+                    }
+                    else 
+                    {
+                        std::cout << "ReplicaManager_heartBeater(): primary server is alive" << "\n";
+                        sleep(1);
+                    }
+                }
+            }
+            close(sockfd);
+            free(msg);
+            
+        }
+        sleep(1);
+    }    
 }
 
 void ReplicaManager_election(ReplicaManager *rm){
     std::cout << "ReplicaManager_election(): starting a new election" << "\n";
     
-    Message *msg = Message_create(ELECTION, rm->sc->port, std::string().c_str(),std::string().c_str());
+    Message *msg = Message_create(ELECTION, rm->sc->port, std::string().c_str(),std::string(rm->sc->host).c_str());
     Message *msg_recv = Message_create(ELECTION, rm->sc->port, std::string().c_str(),std::string().c_str());
     
     int sockfd;
@@ -135,8 +155,6 @@ void ReplicaManager_election(ReplicaManager *rm){
 
         // Se porta desse servidor é maior que a sua, envia mensagem de eleicao
         if(it->first.second > rm->sc->port){
-            existe_maior = 1;
-
             // Envia eleição pra server_i
             if(Message_send(msg, sockfd) == -1){
                 std::cerr << "ReplicaManager_election(): Can't send ELECTION to  " << it->first.second << "\n";
@@ -154,6 +172,7 @@ void ReplicaManager_election(ReplicaManager *rm){
             // Se a mensagem recebida for um OK, então se retira da eleição
             if(msg_recv->type == OK){
                 std::cout << "ReplicaManager_election(): I am " << rm->sc->port << " and I'm out of election, " << it->first.second << " is best than me\n";
+                existe_maior = 1;
                 break;
             }
         }
@@ -165,15 +184,15 @@ void ReplicaManager_election(ReplicaManager *rm){
     }     
 }
 
-void ReplicaManager_updateLeader(ReplicaManager *rm, int elected){
-    std::cout << "ReplicaManager_updateLeader(): " << rm->elected << " is the elected.\n";
-    rm->elected = elected;
-}
-
 void ReplicaManager_iamTheLeader(ReplicaManager *rm){
-    std::cout << "ReplicaManager_iamTheLeader(): sending COORDINATOR for everyone" << "\n";
-    
-    Message *msg = Message_create(COORDINATOR, rm->sc->port, std::string().c_str(),std::string().c_str());
+    std::cout << "ReplicaManager_iamTheLeader(): I am the leader now" << "\n";
+    rm->primary = 1;
+    rm->primary_host = rm->sc->host;
+    rm->primary_port = rm->sc->port;
+    std::cout << "ReplicaManager_iamTheLeader(): " << rm->primary_host << ":" << rm->primary_port << "\n";
+
+    std::cout << "ReplicaManager_iamTheLeader(): sending COORDINATOR for everyone" << "\n";    
+    Message *msg = Message_create(COORDINATOR, rm->primary_port, std::string().c_str(),std::string(rm->primary_host).c_str());
     int sockfd;
 
     for (std::map<std::pair<string,unsigned int>,int>::iterator it = rm->backups.begin(); it != rm->backups.end(); ++it){   
@@ -181,15 +200,21 @@ void ReplicaManager_iamTheLeader(ReplicaManager *rm){
         sockfd = it->second;
 
         if(Message_send(msg, sockfd) == -1){
-            std::cerr << "ReplicaManager_iamTheLeader(): ERROR sending COORDINATOR to " << it->first.second << "\n";
+            std::cerr << "ReplicaManager_iamTheLeader(): ERROR sending COORDINATOR to " << it->first.first << ":" << it->first.second << "\n";
+            rm->backups.erase(std::pair<std::string,unsigned int>(it->first.first,it->first.second));
             continue;
         }
 
-        std::cout << "ReplicaManager_iamTheLeader(): COORDINATOR send to " << it->first.second << "\n";
+        std::cout << "ReplicaManager_iamTheLeader(): COORDINATOR sent to " << it->first.first << ":" << it->first.second << "\n";
     }
 
-    std::cout << "ReplicaManager_iamTheLeader(): I am the leader now" << "\n";
-    rm->elected = rm->sc->port;
+
+    ReplicaManager_updateClients(rm);
+    
+    rm->connectionThread = (pthread_t*)malloc(sizeof(pthread_t));
+    pthread_create(rm->connectionThread,0,ReplicaManager_connect,(void*)rm);
+    pthread_exit(NULL);
+
 }
 
 void ReplicaManager_sendMessageToBackups(ReplicaManager *rm, Message *msg) {
@@ -339,4 +364,53 @@ void ReplicaManager_sendFileToBackups(ReplicaManager *rm, std::string path, Mess
     }
     free(new_msg);
     pthread_mutex_unlock(&rm->sendMessageToBackupsLock);
+}
+
+void ReplicaManager_updateClients(ReplicaManager *rm)
+{
+
+
+}
+
+void ReplicaManager_receiveHeartBeat(ReplicaManager *rm, Message *msg, int sockfd)
+{
+    Message_send(msg,sockfd);
+
+    int timeout = 10;
+    while(timeout > 0)
+    {
+        if(Message_recv(msg,sockfd) != -1)
+            Message_send(msg,sockfd);
+        else
+        {
+            timeout--;
+            sleep(1);
+        }
+        
+    }
+    std::cerr << "ReplicaManager_receiveHeartBeat(): TIMEOUT waiting for hearbeat. Probally backup disconnected.\n";
+}
+
+void ReplicaManager_receiveElection(ReplicaManager *rm, Message *msg, int sockfd)
+{
+    std::cout << "ReplicaManager_receiveElection(): Receive ELECTION from " << msg->payload << "\n";
+
+    msg->type = OK;
+    if(Message_send(msg, sockfd) == -1){
+        std::cerr << "ReplicaManager_receiveElection(): ERROR sending reply\n";
+     
+    }	
+
+    ReplicaManager_election(rm);
+}
+
+void ReplicaManager_receiveCoordinator(ReplicaManager *rm, Message *msg, int sockfd)
+{
+    std::string host = msg->payload;
+    unsigned int port = msg->seqn;
+    std::cout << "ReplicaManager_receiveCoordinator(): Receive COORDINATOR from " << host << ":" << port << "\n";
+    rm->primary_host = std::string(host);
+    rm->primary_port = port;
+    rm->backups.erase(std::pair<std::string,unsigned int>(host,port));
+
 }
