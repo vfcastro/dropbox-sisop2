@@ -37,7 +37,7 @@ void* ReplicaManager_connect(void* rm);
 void ReplicaManager_election(ReplicaManager *rm);
 void ReplicaManager_heartBeater(ReplicaManager *rm);
 void ReplicaManager_iamTheLeader(ReplicaManager *rm);
-void ReplicaManager_sendMessageToBackups(ReplicaManager *rm, Message *msg);
+void ReplicaManager_sendMessageToBackups(ReplicaManager *rm, Message *msg); 
 // Aguarda mensagens do primario
 void ReplicaManager_startBackup(ReplicaManager *rm, int sockfd);
 // Processa msg vinda do primario
@@ -46,7 +46,9 @@ int  ReplicaManager_openSendConn(ReplicaManager *rm, Message *msg);
 int  ReplicaManager_openRecvConn(ReplicaManager *rm, Message *msg);
 int  ReplicaManager_openSession(ReplicaManager *rm, Message *msg);
 int  ReplicaManager_receiveFile(ReplicaManager *rm, Message *msg, int sockfd);
+int  ReplicaManager_deleteFile(ReplicaManager *rm, Message *msg, int sockfd);
 void ReplicaManager_sendFileToBackups(ReplicaManager *rm, std::string path, Message *msg);
+void ReplicaManager_sendDeleteToBackups(ReplicaManager *rm, std::string path, Message *msg);
 void ReplicaManager_updateClients(ReplicaManager *rm);
 void ReplicaManager_receiveHeartBeat(ReplicaManager *sc, Message *msg, int sockfd);
 void ReplicaManager_receiveElection(ReplicaManager *sc, Message *msg, int sockfd);

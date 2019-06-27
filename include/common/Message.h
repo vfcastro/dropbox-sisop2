@@ -33,6 +33,7 @@
 #define FRONTEND_NEW_SERVER 25
 #define FRONTEND_OPEN_SEND_CONN 26
 #define FRONTEND_OPEN_RECV_CONN 27
+#define BACKUP_DELETE_FILE 28
 
 struct Message {
 	unsigned int type;

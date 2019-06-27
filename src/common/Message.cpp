@@ -80,11 +80,11 @@ int Message_send(Message *msg, int sockfd) {
         return -1;
     }
 
-    std::cout << "\n\n\nMensagem Enviada on fd " << sockfd << "\n";
-    std::cout << "msg.type: " << msg->type << "\n";
-    std::cout << "msg.seqn: " << msg->seqn << "\n";
-    std::cout << "msg.username: " << msg->username << "\n";
-    std::cout << "msg.payload: " << msg->payload << "\n\n\n";
+    // std::cout << "\n\n\nMensagem Enviada on fd " << sockfd << "\n";
+    // std::cout << "msg.type: " << msg->type << "\n";
+    // std::cout << "msg.seqn: " << msg->seqn << "\n";
+    // std::cout << "msg.username: " << msg->username << "\n";
+    // std::cout << "msg.payload: " << msg->payload << "\n\n\n";
 
     free(buffer_socket);
     // std::cout << "Message_send(): END on fd " << sockfd << "\n";
@@ -130,11 +130,11 @@ int Message_recv(Message *msg, int sockfd) {
     Message_unmarshall(msg, (Message*)buffer);
     free(buffer);
 
-    std::cout << "\n\n\nMensagem Recebida on fd " << sockfd << "\n";
-    std::cout << "msg.type: " << msg->type << "\n";
-    std::cout << "msg.seqn: " << msg->seqn << "\n";
-    std::cout << "msg.username: " << msg->username << "\n";
-    std::cout << "msg.payload: " << msg->payload << "\n";
+    // std::cout << "\n\n\nMensagem Recebida on fd " << sockfd << "\n";
+    // std::cout << "msg.type: " << msg->type << "\n";
+    // std::cout << "msg.seqn: " << msg->seqn << "\n";
+    // std::cout << "msg.username: " << msg->username << "\n";
+    // std::cout << "msg.payload: " << msg->payload << "\n";
 
     // std::cout << "Message_recv(): END on fd " << sockfd << "\n";
     return sizeof(Message);

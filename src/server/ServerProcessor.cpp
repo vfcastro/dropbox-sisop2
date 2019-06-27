@@ -313,13 +313,14 @@ void ServerProcessor_onDelete(ServerCommunicator *sc, Message *msg){
 	int connectionId = sc->threadConnId.find((pthread_self()))->second;	
 	pthread_mutex_unlock(&sc->connectionIdLock);
 	
+	// propaga os arquivos para os bakcups
+	Message *new_msg = Message_create(BACKUP_DELETE_FILE,0,msg->username,filename.c_str());
+	ReplicaManager_sendDeleteToBackups(sc->rm, path, new_msg);
+	free(new_msg);
+
 	ServerProcessor_propagateDelete(sc, connectionId, msg, filename);
 	// std::cout << "ServerProcessor_onDelete(): END recv DELETE_FILE from client " << msg->username << "\n";
 
-}
-
-void ServerProcessor_deleteCommand(ServerCommunicator *sc, Message *msg){
-	return;
 }
 
 void ServerProcessor_listServerCommand(ServerCommunicator *sc, Message *msg){

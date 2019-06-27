@@ -15,9 +15,11 @@ client:
 	g++ -g $(CLIENT_SCR)*.cpp $(BUILD_DIR)*.o -o $(BIN_DIR)client -lpthread -std=c++11
 	@echo ''
 	@echo ''
-	@echo 'Usage:'
-	@echo './bin/./server <port>'
-	@echo './bin/./client <username> <ip_address> <port>'
+	@echo '#### Usage ####'
+	@echo 'Primary:  ./bin/./server <primary_port> 1 <backup1_ip> <backup1_port> <backup2_ip> <backup2_port>'
+	@echo 'Backup 1: ./bin/./server <backup1_port> 0 <primary_ip> <primary_port> <backup2_ip> <backup2_port>'
+	@echo 'Backup 2: ./bin/./server <backup2_port> 0 <primary_ip> <primary_port> <backup1_ip> <backup1_port>'
+	@echo 'Client:   ./bin/./client <username> <primary_ip> <primary_port> <client_reconnection_port>'
 
 common:
 	mkdir -p $(BUILD_DIR)
@@ -45,6 +47,9 @@ test2:
 
 test3:
 	sh $(TEST_DIR)/test3.sh
+
+test4:
+	sh $(TEST_DIR)/test4.sh
 
 clean:
 	rm -rf $(BIN_DIR)* $(BUILD_DIR) $(TEST_DIR)/client* $(TEST_DIR)/server*

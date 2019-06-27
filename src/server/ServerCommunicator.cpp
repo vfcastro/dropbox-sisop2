@@ -235,7 +235,6 @@ void* ServerCommunicator_accept(void* sc) {
 			ServerCommunicator_updateOpenRecvConn(s,msg,sockfd);
 			break;
 
-
 		default:
 			std::cerr << "ServerCommunicator_accept(): msg type not valid!\n";
 			break;

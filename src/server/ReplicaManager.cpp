@@ -177,7 +177,7 @@ void ReplicaManager_election(ReplicaManager *rm){
 
             // Se a mensagem recebida for um OK, então se retira da eleição
             if(msg_recv->type == OK){
-                std::cout << "ReplicaManager_election(): I am " << rm->sc->port << " and I'm out of election, " << it->first.second << " is best than me\n";
+                std::cout << "ReplicaManager_election(): I am " << rm->sc->port << " and I'm out of election, " << it->first.second << " is better than me\n";
                 existe_maior = 1;
                 break;
             }
@@ -298,6 +298,10 @@ void ReplicaManager_dispatch(ReplicaManager *rm, Message *msg, int sockfd)
         ReplicaManager_receiveFile(rm,msg,sockfd);
         break;
     
+    case BACKUP_DELETE_FILE:
+        ReplicaManager_deleteFile(rm,msg,sockfd);
+        break;
+
     default:
         break;
     }
@@ -384,6 +388,28 @@ int  ReplicaManager_receiveFile(ReplicaManager *rm, Message *msg, int sockfd)
     return 1;
 }
 
+int  ReplicaManager_deleteFile(ReplicaManager *rm, Message *msg, int sockfd)
+{
+    //Recupera o sync_dir_<username>
+    std::string sync_dir(SYNC_DIR_BASE_NAME);
+    sync_dir.append(msg->username);
+    //Monta o path com o nome do arquivo recebido no payload da msg
+    std::string path(sync_dir);
+    path.append("/").append(msg->payload);
+
+    std::cout << "ReplicaManager_deleteFile(): deleting file " << path << "\n";
+
+    const char *c = path.c_str();
+
+    int Removed=std::remove(c);
+
+    // Envia um OK para o primario
+    msg->type = OK;
+    Message_send(msg,sockfd);
+
+    return 1;
+}
+
 void ReplicaManager_sendFileToBackups(ReplicaManager *rm, std::string path, Message *msg)
 {
     pthread_mutex_lock(&rm->sendMessageToBackupsLock);
@@ -396,9 +422,30 @@ void ReplicaManager_sendFileToBackups(ReplicaManager *rm, std::string path, Mess
         Message_recv(new_msg,it->second);
 
        	if(FileManager_sendFile(path, new_msg, it->second) == -1){
-	    	std::cout<<"ReplicaManager_sendFileToBackups(): Error Send File\n";
+	    	std::cerr<<"ReplicaManager_sendFileToBackups(): Error Send File\n";
 	    }
     }
+    free(new_msg);
+    pthread_mutex_unlock(&rm->sendMessageToBackupsLock);
+}
+
+
+void ReplicaManager_sendDeleteToBackups(ReplicaManager *rm, std::string path, Message *msg)
+{
+    pthread_mutex_lock(&rm->sendMessageToBackupsLock);
+    Message *new_msg = (Message*)malloc(sizeof(Message));
+    for (std::map<std::pair<string,unsigned int>,int>::iterator it = rm->backups.begin() ; it != rm->backups.end(); ++it) 
+    {   
+        memcpy((void*)new_msg,(void*)msg,sizeof(Message));
+        std::cout << "ReplicaManager_sendDeleteToBackups: sending msg to " << it->first.first << ":" << it->first.second << " on socketfd " << it->second << "\n";
+        Message_send(new_msg,it->second);
+        Message_recv(new_msg,it->second);
+    
+        if(new_msg->type == OK){
+            std::cerr<<"ReplicaManager_sendDeleteToBackups: Deleting File\n";
+        }
+    }
+
     free(new_msg);
     pthread_mutex_unlock(&rm->sendMessageToBackupsLock);
 }
@@ -418,12 +465,12 @@ void ReplicaManager_updateClients(ReplicaManager *rm)
             if(sockfd != -1)
             {
 			    Message *msg = Message_create(FRONTEND_NEW_SERVER,rm->primary_port,std::string().c_str(),std::string(rm->primary_host).c_str());
-                std::cout << "ReplicaManager_updateClients: sending FRONTEND_NEW_SERVER  to " << it->second.first << ":" << it->second.second << "on fd " << sockfd << "\n";
+                std::cout << "ReplicaManager_updateClients: sending FRONTEND_NEW_SERVER  to " << it->second.first << ":" << it->second.second << " on fd " << sockfd << "\n";
                 Message_send(msg,sockfd);
-                std::cout << "ReplicaManager_updateClients: receiveing FRONTEND_NEW_SERVER OK from " << it->second.first << ":" << it->second.second << "on fd " << sockfd << "\n";
+                std::cout << "ReplicaManager_updateClients: receiveing FRONTEND_NEW_SERVER OK from " << it->second.first << ":" << it->second.second << " on fd " << sockfd << "\n";
                 Message_recv(msg,sockfd);
 
-                std::cout << "ReplicaManager_updateClients: FRONTEND_NEW_SERVER OK received from " << it->second.first << ":" << it->second.second << "on fd " << sockfd << "\n";
+                std::cout << "ReplicaManager_updateClients: FRONTEND_NEW_SERVER OK received from " << it->second.first << ":" << it->second.second << " on fd " << sockfd << "\n";
                 connected = 1;
             }
             else
